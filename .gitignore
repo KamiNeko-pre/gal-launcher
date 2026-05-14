@@ -1,0 +1,50 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+release/
+out/
+*.asar
+
+# Local Electron/user data
+**/gal-launcher/library/
+**/games.json
+**/covers/
+**/backgrounds/
+**/keyvisuals/
+**/official-backgrounds/
+**/cover-candidate-cache/
+
+# Local maintenance scripts used while developing a personal library.
+# They may contain one-off fixes, local cache assumptions, or source-specific probes.
+scripts/
+
+# Logs and caches
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.vite/
+.cache/
+.eslintcache
+
+# OS / editor
+.DS_Store
+Thumbs.db
+desktop.ini
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# Test / coverage
+coverage/
+playwright-report/
+test-results/

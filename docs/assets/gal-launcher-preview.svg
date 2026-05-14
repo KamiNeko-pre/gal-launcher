@@ -1,0 +1,65 @@
+<svg width="1280" height="720" viewBox="0 0 1280 720" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Gal Launcher preview</title>
+  <desc id="desc">A stylized preview of a visual novel launcher with a cover wall and a launch page.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1280" y2="720" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0B111A"/>
+      <stop offset="0.55" stop-color="#182232"/>
+      <stop offset="1" stop-color="#10141D"/>
+    </linearGradient>
+    <linearGradient id="panel" x1="112" y1="76" x2="1218" y2="642" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#26364A" stop-opacity="0.86"/>
+      <stop offset="1" stop-color="#101722" stop-opacity="0.78"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#DCE6EF"/>
+      <stop offset="1" stop-color="#9FB7CA"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="24" stdDeviation="28" flood-color="#000000" flood-opacity="0.38"/>
+    </filter>
+  </defs>
+  <rect width="1280" height="720" fill="url(#bg)"/>
+  <circle cx="1010" cy="110" r="220" fill="#9FB7CA" opacity="0.08"/>
+  <circle cx="230" cy="590" r="260" fill="#B8AAC7" opacity="0.07"/>
+  <rect x="46" y="48" width="62" height="624" rx="31" fill="#0A1018" opacity="0.72"/>
+  <circle cx="77" cy="93" r="23" fill="#E8EEF5" opacity="0.92"/>
+  <circle cx="77" cy="168" r="19" fill="#FFFFFF" opacity="0.16"/>
+  <circle cx="77" cy="232" r="19" fill="#FFFFFF" opacity="0.11"/>
+  <circle cx="77" cy="296" r="19" fill="#FFFFFF" opacity="0.11"/>
+  <circle cx="77" cy="596" r="20" fill="#FFFFFF" opacity="0.16"/>
+  <rect x="140" y="68" width="1076" height="584" rx="28" fill="url(#panel)" stroke="#E2E8F0" stroke-opacity="0.14" filter="url(#shadow)"/>
+  <rect x="178" y="100" width="376" height="46" rx="23" fill="#0B111A" opacity="0.62" stroke="#E2E8F0" stroke-opacity="0.14"/>
+  <circle cx="206" cy="123" r="10" stroke="#DCE6EF" stroke-width="4" opacity="0.86"/>
+  <line x1="213" y1="130" x2="222" y2="139" stroke="#DCE6EF" stroke-width="4" stroke-linecap="round" opacity="0.86"/>
+  <rect x="932" y="103" width="86" height="34" rx="17" fill="#0B111A" opacity="0.52" stroke="#E2E8F0" stroke-opacity="0.14"/>
+  <rect x="1032" y="103" width="86" height="34" rx="17" fill="#0B111A" opacity="0.52" stroke="#E2E8F0" stroke-opacity="0.14"/>
+  <rect x="1132" y="103" width="62" height="34" rx="17" fill="#0B111A" opacity="0.52" stroke="#E2E8F0" stroke-opacity="0.14"/>
+  <text x="178" y="229" fill="#E8EEF5" font-family="Inter,Segoe UI,sans-serif" font-size="18" font-weight="700" opacity="0.72">Visual Novel Library</text>
+  <text x="178" y="303" fill="#FFFFFF" font-family="Inter,Segoe UI,sans-serif" font-size="66" font-weight="850">Gal Launcher</text>
+  <text x="180" y="350" fill="#D6E0EA" font-family="Inter,Segoe UI,sans-serif" font-size="24" font-weight="500" opacity="0.78">Steam-like local launcher for galgames</text>
+  <rect x="178" y="406" width="154" height="58" rx="29" fill="url(#accent)"/>
+  <polygon points="233,425 233,445 250,435" fill="#101820"/>
+  <text x="266" y="442" fill="#101820" font-family="Inter,Segoe UI,sans-serif" font-size="18" font-weight="850">Launch</text>
+  <g opacity="0.95">
+    <rect x="640" y="184" width="126" height="184" rx="10" fill="#DCE6EF"/>
+    <rect x="656" y="202" width="94" height="124" rx="8" fill="#96AFC6"/>
+    <rect x="656" y="340" width="86" height="10" rx="5" fill="#233244" opacity="0.52"/>
+    <rect x="790" y="158" width="126" height="184" rx="10" fill="#BAC8D5"/>
+    <rect x="806" y="176" width="94" height="124" rx="8" fill="#6D8398"/>
+    <rect x="806" y="314" width="86" height="10" rx="5" fill="#233244" opacity="0.52"/>
+    <rect x="940" y="184" width="126" height="184" rx="10" fill="#F2F5F8"/>
+    <rect x="956" y="202" width="94" height="124" rx="8" fill="#B8AAC7"/>
+    <rect x="956" y="340" width="86" height="10" rx="5" fill="#233244" opacity="0.52"/>
+  </g>
+  <g>
+    <rect x="178" y="528" width="106" height="136" rx="10" fill="#E8EEF5" opacity="0.96"/>
+    <rect x="300" y="528" width="106" height="136" rx="10" fill="#B8C7D6" opacity="0.9"/>
+    <rect x="422" y="528" width="106" height="136" rx="10" fill="#D7DDE5" opacity="0.92"/>
+    <rect x="544" y="528" width="106" height="136" rx="10" fill="#9FB7CA" opacity="0.9"/>
+    <rect x="666" y="528" width="106" height="136" rx="10" fill="#C9BFD4" opacity="0.9"/>
+    <rect x="788" y="528" width="106" height="136" rx="10" fill="#EDF2F7" opacity="0.96"/>
+    <rect x="910" y="528" width="106" height="136" rx="10" fill="#8799AA" opacity="0.9"/>
+    <rect x="1032" y="528" width="106" height="136" rx="10" fill="#DCE6EF" opacity="0.94"/>
+  </g>
+</svg>

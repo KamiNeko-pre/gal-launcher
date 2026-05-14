@@ -1,137 +1,157 @@
-# Gal Launcher
+<p align="center">
+  <img src="docs/assets/gal-launcher-preview.svg" alt="Gal Launcher preview" width="960">
+</p>
 
-一个给 Galgame / 视觉小说用的本地游戏启动器。
+<h1 align="center">Gal Launcher</h1>
 
-你可以把电脑里的游戏集中到一个软件里管理，像 Steam 游戏库那样浏览封面、启动游戏、记录游玩时长，还可以自动搜索作品资料、简介、评分和封面图。
+<p align="center">
+  A Steam-like local launcher for Galgame and visual novels.
+  <br>
+  像 Steam 一样管理本地 Galgame / 视觉小说。
+</p>
 
-> 本项目不提供任何游戏本体、不提供下载资源、不绕过 DRM。它只是帮你管理自己电脑里已经安装好的游戏。
+<p align="center">
+  <a href="https://github.com/KamiNeko-pre/gal-launcher/releases"><strong>Download</strong></a>
+  ·
+  <a href="docs/USER_GUIDE.md">User Guide</a>
+  ·
+  <a href="ROADMAP.md">Roadmap</a>
+  ·
+  <a href="docs/DATA_SOURCES.md">Data Sources</a>
+</p>
 
-## 下载使用
+<p align="center">
+  <img alt="Windows" src="https://img.shields.io/badge/platform-Windows-8aa6bd">
+  <img alt="Electron" src="https://img.shields.io/badge/Electron-38-9fb7ca">
+  <img alt="React" src="https://img.shields.io/badge/React-19-9fb7ca">
+  <img alt="License" src="https://img.shields.io/badge/license-MIT-d8e0e8">
+</p>
 
-打开 GitHub 右侧或顶部的 **Releases** 页面，下载最新版本里的：
+> Gal Launcher does **not** provide games, downloads, cracks, or DRM bypass tools. It only manages games already installed on your own computer.
+>
+> 本项目不提供游戏本体、不提供下载资源、不提供破解。它只是一个本地游戏库管理工具。
+
+## Why
+
+Many visual novels live in folders named `game.exe`, `start.exe`, or `SiglusEngine.exe`. After a while, it becomes hard to remember what each folder is, what you have played, and where the right launcher is.
+
+Gal Launcher turns those folders into a clean local library:
+
+- cover wall for browsing
+- key visual launch page
+- one-click launch
+- play count and play time tracking
+- metadata, cover, background, and rating lookup
+- local backup and restore
+
+## Download
+
+Go to [Releases](https://github.com/KamiNeko-pre/gal-launcher/releases) and download:
 
 ```text
 Gal Launcher.exe
 ```
 
-下载后双击运行即可。
+Double-click to run.
 
-如果 Windows 提示“未知发布者”或安全警告，这是因为目前没有代码签名证书。确认来源是本仓库 Release 后，可以选择继续运行。
+Windows may show an "Unknown publisher" warning because the current public build is unsigned. If you downloaded it from this repository's Release page, choose continue/run.
 
-## 它能做什么
+## Features
 
-- 把本地 Galgame 聚合到一个游戏库里
-- 像 Steam 一样显示竖版封面墙
-- 点击封面进入横版大图启动页
-- 一键启动游戏
-- 记录启动次数和游玩时长
-- 自动搜索作品资料、会社、简介、发售日
-- 查找竖版封面和横版背景图
-- 显示 Bangumi 评分
-- 支持导出/恢复本地游戏库备份
-- 所有数据都保存在你的电脑本地
+- Steam-like cover wall
+- Immersive horizontal key visual launch page
+- Add `.exe`, `.bat`, `.cmd`, and `.lnk` launch files
+- Track recent play time, total play time, and launch count
+- Search title, developer, release date, description, cover, and background candidates
+- Bangumi rating lookup
+- Manual metadata editing
+- Backup export/import
+- Local-first storage
 
-## 快速上手
+## Quick Start
 
-1. 打开 `Gal Launcher.exe`
-2. 点击左下角的 `+`
-3. 选择游戏文件夹里的启动文件，比如：
+1. Open `Gal Launcher.exe`
+2. Click the `+` button
+3. Choose the game's launch file
+4. Let the app search metadata
+5. Pick the correct metadata/cover if needed
+6. Click a cover to enter the launch page
+
+Common launch files:
 
 ```text
 game.exe
 start.exe
+launcher.exe
 SiglusEngine.exe
 *.bat
 *.cmd
 *.lnk
 ```
 
-4. 添加后，软件会尝试搜索作品资料
-5. 如果识别不准，可以在资料页里手动重新搜索
-6. 如果封面不对，可以点击“找横版图”或手动编辑
+Read the full [User Guide](docs/USER_GUIDE.md).
 
-更详细的图文流程见 [使用教程](docs/USER_GUIDE.md)。
+## Data And Privacy
 
-## 常见问题
-
-### 这个软件会自动下载游戏吗？
-
-不会。它只管理你已经安装在电脑里的游戏。
-
-### 为什么有些作品识别不准？
-
-很多 Galgame 的启动文件名并不是作品名，比如 `start.exe`、`game.exe`、`SiglusEngine.exe`。这种情况下自动识别可能会偏，需要你手动输入日文原名、中文名或会社名重新搜索。
-
-### 为什么有些封面搜不到？
-
-不同网站收录情况不同。有些作品太新、太冷门，或者标题有多个版本，就可能搜不到。你可以手动选择本地图片作为封面。
-
-### 游玩时长准吗？
-
-大多数情况下可以正常记录。部分游戏会先打开一个启动器，再启动真正的游戏进程，本项目会尽量监控游戏目录下的真实进程，但极少数特殊启动方式仍可能需要手动确认。
-
-### 我的游戏路径和资料会上传吗？
-
-不会。游戏库数据保存在你的本机：
+Your library is stored locally, usually here:
 
 ```text
 %APPDATA%\gal-launcher\library
 ```
 
-只有当你使用“搜索资料 / 查找封面 / 查询评分”等功能时，软件才会向第三方网站发送搜索关键词。
+This may include game paths, cached covers, cached backgrounds, metadata, and play records.
 
-详情见 [隐私说明](docs/PRIVACY.md)。
+Metadata search features may send search keywords to third-party services such as VNDB, Steam, or Bangumi. See [Privacy](docs/PRIVACY.md) and [Data Sources](docs/DATA_SOURCES.md).
 
-## 资料来源说明
+## Screenshots
 
-本项目可能会查询 VNDB、Steam、Bangumi 等公开资料源，用来帮助匹配作品信息和候选图片。
+Real screenshots are intentionally not bundled yet because many covers and backgrounds are copyrighted by their original owners. The preview image above is a synthetic mockup made for this README.
 
-请注意：
+If you share screenshots, please make sure you have the right to share the artwork shown in them.
 
-- 图片、截图、简介、评分等内容归原网站或权利方所有
-- 本项目不会把这些图片打包进仓库
-- 用户选择的图片只缓存在本机
-- 如果某个资料源不允许自动访问，应禁用或移除该来源
+## For Developers
 
-详情见 [资料来源说明](docs/DATA_SOURCES.md)。
+Requirements:
 
-## 给开发者
+- Windows
+- Node.js
+- npm
 
-需要 Node.js 和 npm。
+Run locally:
 
 ```bash
 npm install
 npm run dev
 ```
 
-本地构建：
+Build:
 
 ```bash
 npm run build
 ```
 
-打包为可直接运行的 Windows 目录：
+Package unpacked Windows app:
 
 ```bash
 npm run dist
 ```
 
-打包为便携版 exe：
+Package portable exe:
 
 ```bash
 npm run dist:portable
 ```
 
-## 发布说明
+## Roadmap
 
-如果你要自己 fork 并发布，请确认：
+See [ROADMAP.md](ROADMAP.md).
 
-- 不要上传游戏本体
-- 不要上传用户自己的 `games.json`
-- 不要上传下载来的封面和背景图缓存
-- 不要把第三方图片打包进 Release
-- 发布前阅读 [发布检查清单](docs/RELEASE_CHECKLIST.md)
+## Contributing
 
-## 许可证
+Issues and suggestions are welcome.
 
-MIT License。见 [LICENSE](LICENSE)。
+Please do not upload game files, downloaded covers/backgrounds, or personal library data. See [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## License
+
+MIT. See [LICENSE](LICENSE).

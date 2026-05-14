@@ -1,0 +1,29 @@
+name: Metadata or cover issue
+description: Report incorrect metadata, wrong cover candidates, or source problems.
+title: "[Metadata]: "
+labels: ["metadata"]
+body:
+  - type: input
+    id: game-title
+    attributes:
+      label: Game title
+      placeholder: WHITE ALBUM2
+    validations:
+      required: true
+  - type: textarea
+    id: issue
+    attributes:
+      label: What is wrong?
+      placeholder: The app matched this game as...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected result
+      placeholder: It should match...
+  - type: textarea
+    id: sources
+    attributes:
+      label: Helpful links
+      description: Official website, VNDB, Bangumi, Steam, etc.

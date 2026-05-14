@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Read the user guide
+    url: https://github.com/KamiNeko-pre/gal-launcher/blob/main/docs/USER_GUIDE.md
+    about: Start here if you are not sure how to use the app.

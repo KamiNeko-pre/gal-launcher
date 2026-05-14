@@ -1,0 +1,61 @@
+{
+  "name": "gal-launcher",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A local Galgame launcher for Windows.",
+  "main": "electron/main.cjs",
+  "author": "Gal Launcher",
+  "scripts": {
+    "dev": "concurrently -k \"vite --host 127.0.0.1\" \"wait-on tcp:5173 && cross-env VITE_DEV_SERVER_URL=http://127.0.0.1:5173 electron .\"",
+    "build": "tsc && vite build",
+    "dist": "npm run build && electron-builder --win dir",
+    "dist:portable": "npm run build && electron-builder --win portable",
+    "start": "cross-env NODE_ENV=production electron .",
+    "preview": "vite preview --host 127.0.0.1"
+  },
+  "build": {
+    "appId": "local.gal-launcher.app",
+    "productName": "Gal Launcher",
+    "directories": {
+      "output": "release"
+    },
+    "electronDist": "node_modules/electron/dist",
+    "electronVersion": "38.8.6",
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "package.json"
+    ],
+    "win": {
+      "signAndEditExecutable": false,
+      "target": [
+        {
+          "target": "dir",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "portable": {
+      "artifactName": "Gal Launcher.exe"
+    }
+  },
+  "dependencies": {
+    "@vitejs/plugin-react": "^5.0.4",
+    "concurrently": "^9.2.1",
+    "cross-env": "^10.0.0",
+    "lucide-react": "^0.546.0",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "typescript": "^5.9.3",
+    "vite": "^7.1.12",
+    "wait-on": "^9.0.1"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "electron": "^38.2.2",
+    "electron-builder": "^26.8.1"
+  }
+}

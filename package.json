@@ -5,6 +5,26 @@
   "description": "A local Galgame launcher for Windows.",
   "main": "electron/main.cjs",
   "author": "Gal Launcher",
+  "license": "MIT",
+  "homepage": "https://github.com/KamiNeko-pre/gal-launcher#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/KamiNeko-pre/gal-launcher.git"
+  },
+  "bugs": {
+    "url": "https://github.com/KamiNeko-pre/gal-launcher/issues"
+  },
+  "keywords": [
+    "galgame",
+    "visual-novel",
+    "launcher",
+    "electron",
+    "react",
+    "windows",
+    "game-library",
+    "vndb",
+    "bangumi"
+  ],
   "scripts": {
     "dev": "concurrently -k \"vite --host 127.0.0.1\" \"wait-on tcp:5173 && cross-env VITE_DEV_SERVER_URL=http://127.0.0.1:5173 electron .\"",
     "build": "tsc && vite build",

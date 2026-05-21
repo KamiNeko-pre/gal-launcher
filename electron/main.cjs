@@ -1,4 +1,4 @@
-const { app, BrowserWindow, dialog, ipcMain, Menu, nativeImage, net, protocol, shell } = require("electron");
+const { app, BrowserWindow, dialog, ipcMain, Menu, nativeImage, net, protocol, session, shell } = require("electron");
 const fs = require("node:fs");
 const path = require("node:path");
 const crypto = require("node:crypto");
@@ -8,6 +8,30 @@ const { pathToFileURL } = require("node:url");
   const isDev = Boolean(process.env.VITE_DEV_SERVER_URL);
   let mainWindow;
   const activePlaySessions = new Map();
+
+  const domainQueues = new Map();
+  function limitDomain(url, concurrency = 3) {
+    const origin = new URL(url).origin;
+    if (!domainQueues.has(origin)) {
+      domainQueues.set(origin, { running: 0, queue: [] });
+    }
+    const queue = domainQueues.get(origin);
+    return new Promise((resolve) => {
+      const run = () => {
+        queue.running++;
+        resolve();
+      };
+      if (queue.running < concurrency) {
+        run();
+      } else {
+        queue.queue.push(run);
+      }
+    }).finally(() => {
+      queue.running--;
+      const next = queue.queue.shift();
+      if (next) next();
+    });
+  }
 
 protocol.registerSchemesAsPrivileged([
   {
@@ -34,6 +58,13 @@ function createWindow() {
       preload: path.join(__dirname, "preload.cjs"),
       contextIsolation: true,
       nodeIntegration: false
+    }
+  });
+
+  // Register F12 to toggle DevTools (Ctrl+Shift+I doesn't work with autoHideMenuBar)
+  mainWindow.webContents.on("before-input-event", (_event, input) => {
+    if (input.key === "F12" && input.type === "keyDown") {
+      mainWindow.webContents.toggleDevTools();
     }
   });
 
@@ -684,7 +715,7 @@ async function translateToChinese(text) {
     try {
       const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=zh-CN&dt=t&q=${encodeURIComponent(chunk)}`;
       const response = await fetch(url, {
-        headers: { "User-Agent": "Mozilla/5.0 GalLauncher/0.1" },
+        headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36" },
         signal: AbortSignal.timeout(12000)
       });
       if (!response.ok) throw new Error(`translate ${response.status}`);
@@ -694,7 +725,7 @@ async function translateToChinese(text) {
       try {
         const fallbackUrl = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(chunk)}&langpair=en|zh-CN`;
         const fallback = await fetch(fallbackUrl, {
-          headers: { "User-Agent": "Mozilla/5.0 GalLauncher/0.1" },
+          headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36" },
           signal: AbortSignal.timeout(15000)
         });
         if (!fallback.ok) throw new Error(`fallback translate ${fallback.status}`);
@@ -771,7 +802,7 @@ async function downloadOnlineImage(url, id, dirName) {
   if (fs.existsSync(filePath) && fs.statSync(filePath).size > 0) return filePath;
 
   const response = await fetch(url, {
-    headers: { "User-Agent": "GalLauncher/0.1" },
+    headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36" },
     signal: AbortSignal.timeout(30000)
   });
   if (!response.ok) return "";
@@ -853,6 +884,7 @@ async function hydrateMetadataCandidate(game, candidate) {
 function coverCandidateScore(filePath, sourceWeight = 0) {
   const dimensions = imageDimensions(filePath);
   if (!dimensions.width || !dimensions.height) return null;
+  if (dimensions.width < 1080 || dimensions.height < 600) return null;
   const ratio = dimensions.ratio;
   if (ratio < 1.18 || ratio > 2.8) return null;
 
@@ -948,7 +980,7 @@ function readCoverCandidateCache(game) {
   if (!payload || !Array.isArray(payload.candidates)) return [];
   if (payload.version !== 4) return [];
   const ageMs = Date.now() - new Date(payload.updatedAt || 0).getTime();
-  if (!Number.isFinite(ageMs) || ageMs > 7 * 24 * 60 * 60 * 1000) return [];
+  if (!Number.isFinite(ageMs) || ageMs > 10 * 60 * 1000) return [];
   return payload.candidates
     .filter((candidate) => candidate?.path && fs.existsSync(candidate.path))
     .slice(0, 24);
@@ -967,7 +999,7 @@ async function downloadCandidate(game, url, source, sourceWeight, reason) {
   const filePath = candidateFilePath(game, url, source.toLowerCase().replace(/[^a-z0-9]+/g, ""));
   if (!fs.existsSync(filePath) || fs.statSync(filePath).size === 0) {
     const response = await fetch(url, {
-      headers: { "User-Agent": "GalLauncher/0.1" },
+      headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36" },
       signal: AbortSignal.timeout(8000)
     });
     if (!response.ok) return null;
@@ -975,7 +1007,13 @@ async function downloadCandidate(game, url, source, sourceWeight, reason) {
   }
 
   const scored = coverCandidateScore(filePath, sourceWeight + urlHintScore(url));
-  if (!scored) return null;
+  if (!scored) {
+    if (!process.env.COVER_QUIET) {
+      const dim = imageDimensions(filePath);
+      console.log(`[cover] ${source} rejected: ${dim.width}x${dim.height} ratio=${dim.ratio?.toFixed(2)} (min 1080x600, ratio 1.18-2.8) — ${path.basename(filePath)}`);
+    }
+    return null;
+  }
   return {
     id: crypto.createHash("sha1").update(`${source}:${url}`).digest("hex"),
     title: path.basename(filePath),
@@ -991,10 +1029,12 @@ async function downloadCandidate(game, url, source, sourceWeight, reason) {
 function coverSourcePriority(source) {
   const value = String(source || "");
   if (/Steam/i.test(value)) return 90;
-  if (/官网|瀹樼綉|official/i.test(value)) return 72;
-  if (/VNDB/i.test(value)) return 58;
-  if (/量子|閲忓瓙|Lzacg/i.test(value)) return 46;
-  if (/本地|鏈湴/i.test(value)) return 38;
+  if (/官网|official/i.test(value)) return 72;
+  if (/DLsite/i.test(value)) return 68;
+  if (/2DFan/i.test(value)) return 52;
+  if (/量子|Lzacg/i.test(value)) return 46;
+  if (/本地|当前横版图/i.test(value)) return 38;
+  if (/VNDB/i.test(value)) return 28;
   if (/Bangumi/i.test(value)) return 26;
   return 0;
 }
@@ -1015,7 +1055,7 @@ async function searchBangumi(query) {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "User-Agent": "GalLauncher/0.1 (local personal use)"
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36 (local personal use)"
     },
     body: JSON.stringify({
       keyword: query,
@@ -1024,7 +1064,10 @@ async function searchBangumi(query) {
     }),
     signal: AbortSignal.timeout(6000)
   });
-  if (!response.ok) return [];
+  if (!response.ok) {
+    console.log(`[bangumi] API error ${response.status} for "${query}": ${response.statusText}`);
+    return [];
+  }
   return (await response.json()).data || [];
 }
 
@@ -1035,7 +1078,9 @@ function parseBangumiSearchItems(html, query) {
     const id = Number(block.match(/id=["']item_(\d+)["']/i)?.[1] || 0);
     if (!id) continue;
     const coverRaw = block.match(/<img[^>]+src=["']([^"']+)["'][^>]*class=["']cover["']/i)?.[1] || "";
-    const coverUrl = coverRaw ? new URL(coverRaw.replace(/^\/\//, "https://"), "https://bgm.tv").toString() : "";
+    // Strip resize path segment /r/400/ to get original resolution
+    const coverFull = coverRaw.replace(/\/r\/\d+\//, "/").replace(/^\/\//, "https://");
+    const coverUrl = coverRaw ? new URL(coverFull, "https://bgm.tv").toString() : "";
     const title = stripHtml(block.match(/<a href=["']\/subject\/\d+["'][^>]*class=["']l["'][^>]*>([\s\S]*?)<\/a>/i)?.[1] || "");
     const subtitle = stripHtml(block.match(/<small class=["']grey["']>([\s\S]*?)<\/small>/i)?.[1] || "");
     const info = stripHtml(block.match(/<p class=["']info tip["']>([\s\S]*?)<\/p>/i)?.[1] || "");
@@ -1052,15 +1097,25 @@ function parseBangumiSearchItems(html, query) {
 
 async function searchBangumiWeb(query) {
   const response = await fetch(`https://bgm.tv/subject_search/${encodeURIComponent(query)}?cat=4`, {
-    headers: { "User-Agent": "Mozilla/5.0 GalLauncher/0.1" },
+    headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36" },
     signal: AbortSignal.timeout(9000)
   });
-  if (!response.ok) return [];
-  return parseBangumiSearchItems(await response.text(), query);
+  if (!response.ok) {
+    console.log(`[bangumi] web error ${response.status} for "${query}": ${response.statusText}`);
+    return [];
+  }
+  const html = await response.text();
+  const items = parseBangumiSearchItems(html, query);
+  console.log(`[bangumi] web scrape "${query}": ${items.length} items found`);
+  return items;
 }
 
 async function searchBangumiApiItems(query) {
-  const results = await searchBangumi(query).catch(() => []);
+  const results = await searchBangumi(query).catch((err) => {
+    console.log(`[bangumi] API fetch error for "${query}": ${err.message}`);
+    return [];
+  });
+  console.log(`[bangumi] API "${query}": ${results.length} items found`);
   return results
     .map((item) => {
       const titleScore = Math.max(similarity(query, item.name || ""), similarity(query, item.name_cn || ""));
@@ -1083,16 +1138,18 @@ async function searchBangumiApiItems(query) {
 
 async function lookupBangumiRating(game) {
   const queries = rawTitleQueriesFor(game).slice(0, 8);
+  console.log(`[bangumi] lookup "${game.title}" queries:`, queries);
   const settled = await Promise.allSettled(
     queries.flatMap((query) => [
-      searchBangumiWeb(query).then((items) => ({ query, items })),
-      searchBangumiApiItems(query).then((items) => ({ query, items }))
+      searchBangumiWeb(query).then((items) => ({ query, items, source: "web" })),
+      searchBangumiApiItems(query).then((items) => ({ query, items, source: "api" }))
     ])
   );
   let best = null;
   for (const item of settled) {
     if (item.status !== "fulfilled") continue;
     for (const result of item.value.items.slice(0, 4)) {
+      console.log(`[bangumi] candidate q="${item.value.query}" src=${item.value.source} title="${result.title}" score=${result.score} count=${result.scoreCount} confidence=${result.confidence.toFixed(3)}`);
       if (!best || result.confidence > best.confidence || (result.confidence === best.confidence && result.scoreCount > best.scoreCount)) {
         best = result;
       }
@@ -1100,9 +1157,12 @@ async function lookupBangumiRating(game) {
   }
 
   if (!best || best.confidence < 0.72 || !best.score || best.scoreCount < 1) {
+    const reason = !best ? "no results" : best.confidence < 0.72 ? `confidence ${best.confidence.toFixed(3)} < 0.72` : `score=${best.score} count=${best.scoreCount}`;
+    console.log(`[bangumi] MISS for "${game.title}": ${reason}`);
     return { bgmScore: 0, bgmScoreCount: 0, bgmRank: 0, bgmId: 0, bgmRatingCheckedAt: new Date().toISOString() };
   }
 
+  console.log(`[bangumi] HIT for "${game.title}": score=${best.score} count=${best.scoreCount} confidence=${best.confidence.toFixed(3)}`);
   return {
     bgmScore: best.score,
     bgmScoreCount: best.scoreCount,
@@ -1216,12 +1276,15 @@ function lzacgArticlesFromCategory(html, query) {
 async function searchLzacgArticles(query, categoryPageLimit = 8) {
   const all = [];
   try {
+    await limitDomain("https://lzacg.cc/", 3);
     const response = await fetch(`https://lzacg.cc/?s=${encodeURIComponent(query)}`, {
-      headers: { "User-Agent": "Mozilla/5.0 GalLauncher/0.1" },
+      headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36" },
       signal: AbortSignal.timeout(9000)
     });
     if (response.ok) all.push(...lzacgArticlesFromSearch(await response.text(), query));
-  } catch {}
+  } catch (error) {
+    console.warn("[cover] Lzacg search failed:", error.message?.slice(0, 80));
+  }
 
   const categoryPages = [
     "https://lzacg.cc/category/galgame",
@@ -1229,8 +1292,9 @@ async function searchLzacgArticles(query, categoryPageLimit = 8) {
   ];
   const settled = await Promise.allSettled(
     categoryPages.map(async (url) => {
+      await limitDomain(url, 3);
       const response = await fetch(url, {
-        headers: { "User-Agent": "Mozilla/5.0 GalLauncher/0.1" },
+        headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36" },
         signal: AbortSignal.timeout(9000)
       });
       if (!response.ok) return [];
@@ -1251,8 +1315,9 @@ async function searchLzacgArticles(query, categoryPageLimit = 8) {
 
 async function lzacgCandidatesForArticle(game, article) {
   try {
+    await limitDomain(article.url, 3);
     const response = await fetch(article.url, {
-      headers: { "User-Agent": "Mozilla/5.0 GalLauncher/0.1" },
+      headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36" },
       signal: AbortSignal.timeout(9000)
     });
     if (!response.ok) return [];
@@ -1263,7 +1328,8 @@ async function lzacgCandidatesForArticle(game, article) {
       )
     );
     return settled.flatMap((item) => (item.status === "fulfilled" && item.value ? [item.value] : []));
-  } catch {
+  } catch (error) {
+    console.warn("[cover] Lzacg article failed:", error.message?.slice(0, 80));
     return [];
   }
 }
@@ -1298,6 +1364,282 @@ async function findLzacgCandidates(game, options = {}) {
     articles.sort((a, b) => b.score - a.score).slice(0, 3).map((article) => lzacgCandidatesForArticle(game, article))
   );
   return articleSettled.flatMap((item) => (item.status === "fulfilled" ? item.value : []));
+}
+
+// --- DLsite ---
+
+function dlsiteImageUrlsFromProduct(html, pageUrl) {
+  const urls = [];
+  // og:image
+  const ogMatch = html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["'][^>]*>/i)
+    || html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["'][^>]*>/i);
+  if (ogMatch) urls.push(ogMatch[1]);
+  // product images — look for img tags with modpub/img.dlsite.jp in src
+  for (const match of html.matchAll(/<img[^>]+src=["']([^"']*img\.dlsite\.jp[^"']+)["'][^>]*>/gi)) {
+    urls.push(match[1]);
+  }
+  for (const match of html.matchAll(/<img[^>]+data-src=["']([^"']*img\.dlsite\.jp[^"']+)["'][^>]*>/gi)) {
+    urls.push(match[1]);
+  }
+  // normalize: strip resize suffixes to get original resolution
+  return Array.from(new Set(urls)).map((raw) => {
+    let u = raw.replace(/&amp;/g, "&");
+    // Strip dimension suffixes: _240x240, _800x600 etc. before extension
+    u = u.replace(/_(\d{2,4})x(\d{2,4})(?=\.(?:png|jpe?g|webp))/gi, "");
+    // Strip common thumbnail type markers
+    u = u.replace(/_(?:sam|thumb|small|mini|sq)(?=\.)/gi, "");
+    try {
+      return { url: new URL(u, pageUrl).toString(), score: urlHintScore(u) };
+    } catch {
+      return null;
+    }
+  }).filter(Boolean).filter((item) => item.score > -50).sort((a, b) => b.score - a.score).map((item) => item.url);
+}
+
+function searchDlsiteArticlesFromHtml(html, query) {
+  const articles = [];
+  const seen = new Set();
+  // Match product links: /maniax/work/=/product_id/XXX.html or /work/=/product_id/XXX.html
+  // Links have title attribute with the product name
+  const linkPattern = /<a[^>]+href=["'](\/[^"']*\/work\/=\/product_id\/[^"'\s]+?)(?:\.html)?["'][^>]*>/gi;
+  for (const match of html.matchAll(linkPattern)) {
+    const rawLink = match[1];
+    if (seen.has(rawLink) || /reviewlist/i.test(rawLink)) continue;
+    seen.add(rawLink);
+    // Prefer title attribute, fallback to link text
+    const titleAttr = match[0].match(/title=["']([^"']+)["']/i);
+    const title = titleAttr ? titleAttr[1].trim() : stripMarkup(match[0].replace(/<[^>]+>/g, " ")).trim();
+    if (!title || title.length < 2) continue;
+    const score = Math.max(similarity(query, title), similarity(normalizeSearchText(query), normalizeSearchText(title)));
+    if (score < 0.12) continue;
+    articles.push({ url: new URL(rawLink, "https://www.dlsite.com").toString(), title, score });
+  }
+  return articles.sort((a, b) => b.score - a.score).slice(0, 4);
+}
+
+async function searchDlsiteArticles(query) {
+  const urls = [
+    `https://www.dlsite.com/soft/search/?keyword=${encodeURIComponent(query)}`,
+    `https://www.dlsite.com/maniax/fsr/=/keyword/${encodeURIComponent(query)}/`
+  ];
+  const settled = await Promise.allSettled(urls.map(async (url) => {
+    try {
+      await limitDomain("https://www.dlsite.com", 3);
+      const response = await fetch(url, {
+        headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36" },
+        signal: AbortSignal.timeout(10000)
+      });
+      if (!response.ok) return [];
+      return searchDlsiteArticlesFromHtml(await response.text(), query);
+    } catch (error) {
+      console.warn("[cover] DLsite search failed:", error.message?.slice(0, 80));
+      return [];
+    }
+  }));
+  const seen = new Set();
+  const all = [];
+  for (const item of settled) {
+    if (item.status !== "fulfilled") continue;
+    for (const article of item.value) {
+      if (seen.has(article.url)) continue;
+      seen.add(article.url);
+      all.push(article);
+    }
+  }
+  return all.sort((a, b) => b.score - a.score).slice(0, 4);
+}
+
+async function dlsiteCandidatesForProduct(game, article) {
+  try {
+    await limitDomain("https://www.dlsite.com", 3);
+    const response = await fetch(article.url, {
+      headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36" },
+      signal: AbortSignal.timeout(10000)
+    });
+    if (!response.ok) return [];
+    const urls = dlsiteImageUrlsFromProduct(await response.text(), article.url);
+    const settled = await Promise.allSettled(
+      urls.slice(0, 6).map((url, index) =>
+        downloadCandidate(game, url, "DLsite", 126 + article.score * 24 - index * 6, `${article.title} / DLsite`)
+      )
+    );
+    return settled.flatMap((item) => (item.status === "fulfilled" && item.value ? [item.value] : []));
+  } catch (error) {
+    console.warn("[cover] DLsite product failed:", error.message?.slice(0, 80));
+    return [];
+  }
+}
+
+async function findDlsiteCandidates(game) {
+  const queries = rawTitleQueriesFor(game).slice(0, 6);
+  const searchSettled = await Promise.allSettled(queries.map((query) => searchDlsiteArticles(query)));
+  const articles = [];
+  const seen = new Set();
+  for (const item of searchSettled) {
+    if (item.status !== "fulfilled") continue;
+    for (const article of item.value) {
+      if (seen.has(article.url)) continue;
+      seen.add(article.url);
+      articles.push(article);
+    }
+  }
+  const articleSettled = await Promise.allSettled(
+    articles.sort((a, b) => b.score - a.score).slice(0, 3).map((article) => dlsiteCandidatesForProduct(game, article))
+  );
+  return articleSettled.flatMap((item) => (item.status === "fulfilled" ? item.value : []));
+}
+
+// --- 2DFan ---
+
+function search2DFanSubjectsFromHtml(html, query) {
+  const subjects = [];
+  const seen = new Set();
+  // Match subject item cards: /subjects/<id>
+  const itemPattern = /<a[^>]+href=["'](\/subjects\/\d+[^"']*)["'][^>]*>/gi;
+  for (const match of html.matchAll(itemPattern)) {
+    const link = match[1];
+    if (seen.has(link)) continue;
+    seen.add(link);
+    const ctx = html.slice(Math.max(0, match.index - 600), match.index + 1200);
+    const titleMatch = ctx.match(/<a[^>]+href=["'][^"']*\/subjects\/[^"']+["'][^>]*>([\s\S]*?)<\/a>/i);
+    const title = titleMatch ? stripMarkup(titleMatch[1]).trim() : "";
+    if (!title) continue;
+    const score = Math.max(similarity(query, title), similarity(normalizeSearchText(query), normalizeSearchText(title)));
+    if (score < 0.15) continue;
+    subjects.push({ url: new URL(link, "https://2dfan.com").toString(), title, score });
+  }
+  return subjects.sort((a, b) => b.score - a.score).slice(0, 4);
+}
+
+function twoDFanImageUrlsFromSubject(html, pageUrl) {
+  const urls = [];
+  // og:image
+  const ogMatch = html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["'][^>]*>/i)
+    || html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["'][^>]*>/i);
+  if (ogMatch) urls.push(ogMatch[1]);
+  // subject cover / gallery images — narrow to likely cover containers
+  const coverSection = html.match(/<div[^>]+class=["'][^"']*cover[^"']*["'][^>]*>([\s\S]*?)<\/div>/i)?.[1] || html;
+  for (const match of coverSection.matchAll(/<img[^>]+(?:src|data-src|data-original)=["']([^"']+)["'][^>]*>/gi)) {
+    urls.push(match[1]);
+  }
+  // fallback: page-wide img tags if cover section didn't yield
+  if (urls.length < 2) {
+    for (const match of html.matchAll(/<img[^>]+(?:src|data-src|data-original)=["']([^"']+)["'][^>]*>/gi)) {
+      urls.push(match[1]);
+    }
+  }
+  return Array.from(new Set(urls)).map((raw) => {
+    let u = raw.replace(/&amp;/g, "&");
+    // Strip 2DFan resize suffixes to get original
+    u = u.replace(/[!?]large/, "").replace(/[!?]medium/, "").replace(/[!?]small/, "").replace(/_\d+x\d+\./, ".");
+    try {
+      return { url: new URL(u, pageUrl).toString(), score: urlHintScore(u) };
+    } catch {
+      return null;
+    }
+  }).filter(Boolean).filter((item) => item.score > -50).sort((a, b) => b.score - a.score).map((item) => item.url);
+}
+
+function search2DFanSubjectsFromJson(data, query) {
+  // Rails JSON search responses can be: array, {subjects: [...]}, {data: [...]}, {results: [...]}
+  const items = Array.isArray(data) ? data
+    : data.subjects || data.data || data.results || data.items || [];
+  if (!Array.isArray(items)) return [];
+  return items.map((item) => {
+    const id = item.id || item.slug;
+    const name = item.name || item.title || item.name_cn || "";
+    if (!id || !name) return null;
+    const url = `https://2dfan.com/subjects/${id}`;
+    const score = Math.max(similarity(query, name), similarity(normalizeSearchText(query), normalizeSearchText(name)));
+    if (score < 0.15) return null;
+    return { url, title: name, score };
+  }).filter(Boolean).sort((a, b) => b.score - a.score).slice(0, 4);
+}
+
+async function search2DFanSubjects(query) {
+  // 2DFan uses Rails UJS AJAX for search, so the HTML page may be an empty shell.
+  // Try multiple URL formats: .json variant first, then HTML.
+  const encoded = encodeURIComponent(query);
+  const urls = [
+    { url: `https://2dfan.com/subjects/search.json?q=${encoded}`, type: "json" },
+    { url: `https://2dfan.com/subjects/search?q=${encoded}`, type: "html" }
+  ];
+
+  const settled = await Promise.allSettled(urls.map(async ({ url, type }) => {
+    try {
+      await limitDomain("https://2dfan.com", 3);
+      const response = await fetch(url, {
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+          "Accept": type === "json" ? "application/json" : "text/html"
+        },
+        signal: AbortSignal.timeout(10000)
+      });
+      if (!response.ok) return [];
+      if (type === "json") {
+        const data = await response.json().catch(() => null);
+        if (!data) return [];
+        // Rails JSON responses typically have subjects array or results
+        return search2DFanSubjectsFromJson(data, query);
+      }
+      return search2DFanSubjectsFromHtml(await response.text(), query);
+    } catch (error) {
+      console.warn("[cover] 2DFan search failed:", error.message?.slice(0, 80));
+      return [];
+    }
+  }));
+
+  const seen = new Set();
+  const all = [];
+  for (const item of settled) {
+    if (item.status !== "fulfilled") continue;
+    for (const subject of item.value) {
+      if (seen.has(subject.url)) continue;
+      seen.add(subject.url);
+      all.push(subject);
+    }
+  }
+  return all.sort((a, b) => b.score - a.score).slice(0, 4);
+}
+
+async function twoDFanCandidatesForSubject(game, subject) {
+  try {
+    await limitDomain("https://2dfan.com", 3);
+    const response = await fetch(subject.url, {
+      headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36" },
+      signal: AbortSignal.timeout(10000)
+    });
+    if (!response.ok) return [];
+    const urls = twoDFanImageUrlsFromSubject(await response.text(), subject.url);
+    const settled = await Promise.allSettled(
+      urls.slice(0, 6).map((url, index) =>
+        downloadCandidate(game, url, "2DFan", 118 + subject.score * 22 - index * 4, `${subject.title} / 2DFan`)
+      )
+    );
+    return settled.flatMap((item) => (item.status === "fulfilled" && item.value ? [item.value] : []));
+  } catch (error) {
+    console.warn("[cover] 2DFan subject failed:", error.message?.slice(0, 80));
+    return [];
+  }
+}
+
+async function find2DFanCandidates(game) {
+  const queries = rawTitleQueriesFor(game).slice(0, 6);
+  const searchSettled = await Promise.allSettled(queries.map((query) => search2DFanSubjects(query)));
+  const subjects = [];
+  const seen = new Set();
+  for (const item of searchSettled) {
+    if (item.status !== "fulfilled") continue;
+    for (const subject of item.value) {
+      if (seen.has(subject.url)) continue;
+      seen.add(subject.url);
+      subjects.push(subject);
+    }
+  }
+  const subjectSettled = await Promise.allSettled(
+    subjects.sort((a, b) => b.score - a.score).slice(0, 3).map((subject) => twoDFanCandidatesForSubject(game, subject))
+  );
+  return subjectSettled.flatMap((item) => (item.status === "fulfilled" ? item.value : []));
 }
 
 async function findVndbScreenshotCandidates(game) {
@@ -1380,42 +1722,58 @@ async function findVndbScreenshotCandidates(game) {
   async function findBangumiCoverCandidates(game) {
     const queries = rawTitleQueriesFor(game).slice(0, 8);
     const settled = await Promise.allSettled(
-      queries.flatMap((query) => [
-        searchBangumiWeb(query).then((items) => ({ query, items })),
-        searchBangumiApiItems(query).then((items) => ({ query, items }))
-      ])
+      queries.map((query) => searchBangumiWeb(query).then((items) => ({ query, items })))
     );
     const downloads = [];
     const seen = new Set();
+    let totalFound = 0;
+    let confFiltered = 0;
     for (const item of settled) {
       if (item.status !== "fulfilled") continue;
       for (const result of item.value.items.slice(0, 3)) {
-        if (result.confidence < 0.72 || !result.coverUrl || seen.has(result.coverUrl)) continue;
+        totalFound++;
+        if (result.confidence < 0.55 || !result.coverUrl || seen.has(result.coverUrl)) {
+          if (result.confidence < 0.55) confFiltered++;
+          continue;
+        }
         seen.add(result.coverUrl);
-        downloads.push(downloadCandidate(game, result.coverUrl, "Bangumi", 72 + result.confidence * 12, `${result.title || result.subtitle} / bgm ${result.id}`));
+        downloads.push(downloadCandidate(game, result.coverUrl, "Bangumi", 86 + result.confidence * 28, `${result.title || result.subtitle} / bgm ${result.id}`));
       }
     }
 
     const results = await Promise.allSettled(downloads.slice(0, 8));
+    const passed = results.filter((item) => item.status === "fulfilled" && item.value).length;
+    if (!process.env.COVER_QUIET) {
+      console.log(`[cover:${game.title.slice(0, 20)}] Bangumi: ${settled.filter((s) => s.status === "fulfilled").length}/${queries.length} queries ok, ${totalFound} items (${confFiltered} low-conf), ${downloads.length} downloaded, ${passed} passed quality`);
+    }
     return results.flatMap((item) => (item.status === "fulfilled" && item.value ? [item.value] : []));
   }
 
   async function findSteamCandidates(game) {
-    const queries = rawTitleQueriesFor(game).slice(0, 8);
+    const hasAscii = (s) => /[A-Za-z0-9]/.test(s);
+    const queries = rawTitleQueriesFor(game)
+      .filter((q) => q.length >= 3 && hasAscii(q))
+      .slice(0, 6);
     const appMatches = [];
     for (const query of queries) {
       try {
         const response = await fetch(`https://store.steampowered.com/api/storesearch/?term=${encodeURIComponent(query)}&l=english&cc=us`, {
-          headers: { "User-Agent": "Mozilla/5.0 GalLauncher/0.1" },
+          headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36" },
           signal: AbortSignal.timeout(7000)
         });
         if (!response.ok) continue;
         const data = await response.json();
         for (const item of (data.items || []).slice(0, 8)) {
           const confidence = similarity(query, item.name || "");
-          if (confidence >= 0.5) appMatches.push({ appid: item.id, name: item.name, confidence });
+          if (confidence >= 0.45) appMatches.push({ appid: item.id, name: item.name, confidence, query });
         }
-      } catch {}
+      } catch (error) {
+        console.warn("[cover] Steam search failed:", error.message?.slice(0, 80));
+      }
+    }
+
+    if (!process.env.COVER_QUIET) {
+      console.log(`[cover:${game.title.slice(0, 20)}] Steam: ${queries.length} queries, ${appMatches.length} app matches`);
     }
 
     const bestByApp = new Map();
@@ -1427,7 +1785,7 @@ async function findVndbScreenshotCandidates(game) {
     for (const match of Array.from(bestByApp.values()).slice(0, 4)) {
       try {
         const response = await fetch(`https://store.steampowered.com/api/appdetails?appids=${match.appid}&filters=basic,screenshots`, {
-          headers: { "User-Agent": "Mozilla/5.0 GalLauncher/0.1" },
+          headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36" },
           signal: AbortSignal.timeout(7000)
         });
         if (!response.ok) continue;
@@ -1445,10 +1803,16 @@ async function findVndbScreenshotCandidates(game) {
           const weight = (isLibraryAsset ? 148 : 122) + match.confidence * 38 - index * 2;
           downloads.push(downloadCandidate(game, url, "Steam", weight, `${details.name || match.name} / Steam ${match.appid}`));
         }
-      } catch {}
+      } catch (error) {
+        console.warn("[cover] Steam details failed:", error.message?.slice(0, 80));
+      }
     }
 
     const results = await Promise.allSettled(downloads);
+    const passed = results.filter((item) => item.status === "fulfilled" && item.value).length;
+    if (!process.env.COVER_QUIET) {
+      console.log(`[cover:${game.title.slice(0, 20)}] Steam: ${downloads.length} downloaded, ${passed} passed quality`);
+    }
     return results.flatMap((item) => (item.status === "fulfilled" && item.value ? [item.value] : []));
   }
 
@@ -1465,16 +1829,19 @@ async function findVndbScreenshotCandidates(game) {
       const url = new URL(match[1].replace(/&amp;/g, "&"), pageUrl);
       if (url.origin !== base.origin) continue;
       const value = url.toString().toLowerCase();
-      if (/product|index|top|special|visual|download|wallpaper|main/.test(value)) links.push(url.toString());
+      if (/product|index|top|special|visual|download|wallpaper|main|gallery|illust|character|wp_/.test(value)) links.push(url.toString());
     } catch {}
   }
-  return Array.from(new Set(links)).slice(0, 4);
+  return Array.from(new Set(links)).slice(0, 6);
 }
 
-async function officialImageCandidatesFromPage(game, pageUrl, depth = 1) {
+async function officialImageCandidatesFromPage(game, pageUrl, depth = 1, visited = new Set()) {
+  if (visited.has(pageUrl) || visited.size >= 8) return [];
+  visited.add(pageUrl);
   try {
+    await limitDomain(pageUrl, 3);
     const response = await fetch(pageUrl, {
-      headers: { "User-Agent": "Mozilla/5.0 GalLauncher/0.1" },
+      headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36" },
       signal: AbortSignal.timeout(6000)
     });
     if (!response.ok) return [];
@@ -1487,13 +1854,14 @@ async function officialImageCandidatesFromPage(game, pageUrl, depth = 1) {
     if (depth <= 0 || candidates.some((item) => item.width >= 1280 && item.height >= 650 && item.score >= 170)) return candidates;
 
     const linkSettled = await Promise.allSettled(
-      officialLinksFromHtml(html, pageUrl).map((url) => officialImageCandidatesFromPage(game, url, depth - 1))
+      officialLinksFromHtml(html, pageUrl).map((url) => officialImageCandidatesFromPage(game, url, depth - 1, visited))
     );
     for (const item of linkSettled) {
       if (item.status === "fulfilled") candidates.push(...item.value);
     }
     return candidates;
-  } catch {
+  } catch (error) {
+    console.warn("[cover] official site failed:", error.message?.slice(0, 80));
     return [];
   }
 }
@@ -1506,7 +1874,7 @@ async function bangumiOfficialLinks(query) {
     if (titleScore < 0.55) continue;
     try {
       const response = await fetch(`https://api.bgm.tv/v0/subjects/${item.id}`, {
-        headers: { "User-Agent": "GalLauncher/0.1 (local personal use)" },
+        headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36 (local personal use)" },
         signal: AbortSignal.timeout(6000)
       });
       if (!response.ok) continue;
@@ -1530,31 +1898,47 @@ async function findCoverCandidates(game) {
   if (cached.length >= 6) return cached;
 
   const localCandidates = [
-    existingCoverCandidate(game),
-    ...localCoverCandidates(game)
+    existingCoverCandidate(game)
   ].filter(Boolean);
 
+  const sourceLabels = ["Steam", "Lzacg", "VNDB(screenshot)", "VNDB(image)", "Bangumi"];
   const fastResults = await Promise.allSettled([
     findSteamCandidates(game),
     findLzacgCandidates(game, { fast: true }),
     findVndbScreenshotCandidates(game),
-    findVndbImageCandidates(game)
+    findVndbImageCandidates(game),
+    findBangumiCoverCandidates(game)
   ]);
   const fastGroups = fastResults.map((result) =>
     result.status === "fulfilled" && Array.isArray(result.value) ? result.value : []
   );
+  if (!process.env.COVER_QUIET) {
+    for (let i = 0; i < fastResults.length; i++) {
+      const status = fastResults[i].status;
+      const count = fastGroups[i].length;
+      console.log(`[cover:${game.title.slice(0, 20)}] ${sourceLabels[i]}: ${status} → ${count} candidates`);
+    }
+  }
   let candidates = mergeCoverCandidates([localCandidates, ...fastGroups]);
 
   const strongCount = candidates.filter((item) => item.score >= 168 && item.width >= 1280).length;
-  if (strongCount < 5) {
+  if (!process.env.COVER_QUIET) {
+    console.log(`[cover:${game.title.slice(0, 20)}] Phase 1 total: ${candidates.length} (strong: ${strongCount}) → Phase 2: ${strongCount < 3 ? "triggered" : "skipped"}`);
+  }
+  if (strongCount < 3) {
+    const slowLabels = ["VNDB(official)", "Lzacg(slow)"];
     const slowResults = await Promise.allSettled([
       findVndbOfficialCandidates(game),
-      findBangumiCoverCandidates(game),
       findLzacgCandidates(game, { fast: false })
     ]);
     const slowGroups = slowResults.map((result) =>
       result.status === "fulfilled" && Array.isArray(result.value) ? result.value : []
     );
+    if (!process.env.COVER_QUIET) {
+      for (let i = 0; i < slowResults.length; i++) {
+        console.log(`[cover:${game.title.slice(0, 20)}] ${slowLabels[i]}: ${slowResults[i].status} → ${slowGroups[i].length} candidates`);
+      }
+    }
     candidates = mergeCoverCandidates([candidates, ...slowGroups]);
   }
 
@@ -1623,7 +2007,14 @@ ipcMain.handle("game:searchMetadataCandidates", async (_event, game, keyword) =>
 
 ipcMain.handle("game:applyMetadataCandidate", async (_event, game, candidate) => hydrateMetadataCandidate(game, candidate));
 
-ipcMain.handle("game:findCoverCandidates", async (_event, game) => findCoverCandidates(game));
+ipcMain.handle("game:findCoverCandidates", async (_event, game) => {
+  try {
+    return await findCoverCandidates(game);
+  } catch (error) {
+    console.error("findCoverCandidates failed:", error);
+    return [];
+  }
+});
 
 ipcMain.handle("game:lookupBangumiRating", async (_event, game) => lookupBangumiRating(game));
 
@@ -1692,6 +2083,21 @@ function finishPlaySession(sessionId) {
     endedAt: new Date(endedMs).toISOString(),
     durationSeconds: Math.max(0, Math.round((endedMs - current.startedMs) / 1000))
   };
+
+  const games = readLibrary();
+  const game = games.find((g) => g.id === current.gameId);
+  if (game) {
+    const sessions = Array.isArray(game.sessions) ? game.sessions : [];
+    sessions.push({
+      sessionId: current.sessionId,
+      startedAt: current.startedAt,
+      endedAt: payload.endedAt,
+      durationSeconds: payload.durationSeconds
+    });
+    game.sessions = sessions.slice(-50);
+  }
+  writeLibrary(games);
+
   if (mainWindow && !mainWindow.isDestroyed()) {
     mainWindow.webContents.send("game:sessionEnded", payload);
   }
@@ -1753,6 +2159,14 @@ ipcMain.handle("game:launch", async (_event, game) => {
 
 app.whenReady().then(() => {
   Menu.setApplicationMenu(null);
+
+  // Proxy: route everything through local proxy except Lzacg (blocked by VPN)
+  const proxyPort = process.env.PROXY_PORT || "7897";
+  session.defaultSession.setProxy({
+    proxyRules: `http://127.0.0.1:${proxyPort}`,
+    proxyBypassRules: "lzacg.cc,*.lzacg.cc,ossimg.nyaya.top,*.ossimg.nyaya.top,<local>"
+  }).catch(() => {});
+
   protocol.handle("local-file", (request) => {
     const url = new URL(request.url);
     let filePath = decodeURIComponent(url.pathname);
@@ -1764,6 +2178,10 @@ app.whenReady().then(() => {
 });
 
 app.on("window-all-closed", () => {
+  // Clear cover candidate search cache on exit (not downloaded images — those may be in use)
+  try {
+    fs.rmSync(path.join(app.getPath("userData"), "library", "cover-candidate-cache"), { recursive: true, force: true });
+  } catch {}
   if (process.platform !== "darwin") app.quit();
 });
 

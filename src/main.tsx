@@ -1,231 +1,47 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import {
-  BarChart3,
   Clock3,
   Download,
   Edit3,
-  FolderOpen,
   Gamepad2,
   Home,
   ImagePlus,
   Library,
   Play,
   Plus,
-  RefreshCw,
   Search,
-  ShieldCheck,
   SlidersHorizontal,
-  Tags,
   Trash2,
   Upload,
   X
 } from "lucide-react";
 import type { CoverCandidate, Game, GameStatus, MetadataCandidate, PickedLaunchFile, PlaySessionEndedEvent } from "./types";
+import type { ThemeSettings } from "./theme";
+import { themePresets, defaultTheme, loadThemeSettings } from "./theme";
+import { statuses, nowIso, makeGame, normalizeTags, formatPlayTime, getTotalPlaySeconds } from "./utils";
+import { SideSheet } from "./components/SideSheet";
 import "./styles.css";
 
-const statuses: GameStatus[] = ["想玩", "未开始", "进行中", "已通关", "搁置"];
-
-const statusMeta: Record<GameStatus, { tone: string }> = {
-  想玩: { tone: "wish" },
-  未开始: { tone: "idle" },
-  进行中: { tone: "active" },
-  已通关: { tone: "done" },
-  搁置: { tone: "paused" }
+const sourceColors: Record<string, string> = {
+  "Steam": "#1a9fff",
+  "官网": "#4caf50",
+  "DLsite": "#00bcd4",
+  "VNDB截图": "#5c9ce0",
+  "VNDB封面": "#5c9ce0",
+  "2DFan": "#3f51b5",
+  "量子ACG": "#e91e63",
+  "本地文件夹": "#ff9800",
+  "当前横版图": "#9c27b0",
+  "Bangumi": "#f44336"
 };
-
-function nowIso() {
-  return new Date().toISOString();
-}
-
-function makeGame(picked: PickedLaunchFile): Game {
-  const now = nowIso();
-  return {
-    id: crypto.randomUUID(),
-    title: picked.title,
-    originalTitle: picked.originalTitle ?? "",
-    description: picked.description ?? "",
-    developer: picked.developer ?? "",
-    releaseDate: picked.releaseDate ?? "",
-    installPath: picked.installPath,
-    executablePath: picked.executablePath,
-    workingDirectory: picked.workingDirectory,
-    coverPath: picked.coverPath ?? "",
-    backgroundPath: picked.backgroundPath || picked.coverPath || "",
-    status: "未开始",
-    tags: picked.tags ?? [],
-    rating: 0,
-    playCount: 0,
-    totalPlaySeconds: 0,
-    currentSessionId: null,
-    currentSessionStartedAt: null,
-    lastPlayedAt: null,
-    createdAt: now,
-    updatedAt: now
-  };
-}
-
-function formatDate(value: string | null) {
-  if (!value) return "尚未启动";
-  return new Intl.DateTimeFormat("zh-CN", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit"
-  }).format(new Date(value));
-}
-
-function normalizeTags(raw: string) {
-  return raw
-    .split(/[，,]/)
-    .map((item) => item.trim())
-    .filter(Boolean);
-}
-
-function formatBgmRating(game: Game) {
-  if (!game.bgmRatingCheckedAt) return "查询中";
-  if (!game.bgmScore) return "暂无";
-  const count = game.bgmScoreCount ? ` / ${game.bgmScoreCount}人` : "";
-  return `${game.bgmScore.toFixed(1)}${count}`;
-}
-
-function formatPlayTime(seconds = 0) {
-  if (seconds < 60) return seconds > 0 ? "不到 1 小时" : "0 小时";
-  const hours = seconds / 3600;
-  if (hours < 10) return `${hours.toFixed(1)} 小时`;
-  return `${Math.round(hours)} 小时`;
-}
-
-function getTotalPlaySeconds(game: Game, nowMs = Date.now()) {
-  const stored = game.totalPlaySeconds ?? 0;
-  if (!game.currentSessionStartedAt) return stored;
-  const startedMs = new Date(game.currentSessionStartedAt).getTime();
-  if (!Number.isFinite(startedMs)) return stored;
-  return stored + Math.max(0, Math.round((nowMs - startedMs) / 1000));
-}
-
-function metadataChecks(game: Game) {
-  return [
-    { label: "标题", ok: Boolean(game.title) },
-    { label: "竖版封面", ok: Boolean(game.coverPath) },
-    { label: "横版图", ok: Boolean(game.backgroundPath && game.backgroundPath !== game.coverPath) },
-    { label: "简介", ok: Boolean(game.description && game.description.length > 24) },
-    { label: "评分", ok: Boolean(game.bgmScore) },
-    { label: "启动文件", ok: Boolean(game.executablePath) }
-  ];
-}
-
-function completeness(game: Game) {
-  const checks = metadataChecks(game);
-  return Math.round((checks.filter((item) => item.ok).length / checks.length) * 100);
-}
-
-type ThemeSettings = {
-  id: string;
-  name: string;
-  description: string;
-  glassAlpha: number;
-  blur: number;
-  cardScale: number;
-  accent: string;
-  overlayLeft: number;
-  overlayRight: number;
-  overlayBottom: number;
-  glowA: string;
-  glowB: string;
-};
-
-const themePresets: ThemeSettings[] = [
-  {
-    id: "mist",
-    name: "静雾灰蓝",
-    description: "低饱和灰蓝，克制耐看，适合长期使用。",
-    glassAlpha: 0.54,
-    blur: 18,
-    cardScale: 1,
-    accent: "#9fb7ca",
-    overlayLeft: 0.62,
-    overlayRight: 0.48,
-    overlayBottom: 0.78,
-    glowA: "rgba(148, 163, 184, 0.12)",
-    glowB: "rgba(203, 213, 225, 0.1)"
-  },
-  {
-    id: "night",
-    name: "墨蓝夜色",
-    description: "更沉稳的暗色基底，强调文字可读性。",
-    glassAlpha: 0.64,
-    blur: 20,
-    cardScale: 1,
-    accent: "#8aa6bd",
-    overlayLeft: 0.72,
-    overlayRight: 0.6,
-    overlayBottom: 0.86,
-    glowA: "rgba(96, 125, 139, 0.14)",
-    glowB: "rgba(148, 163, 184, 0.1)"
-  },
-  {
-    id: "sakura",
-    name: "月白藤灰",
-    description: "保留一点淡紫气质，但整体更素净。",
-    glassAlpha: 0.56,
-    blur: 18,
-    cardScale: 1,
-    accent: "#b8aac7",
-    overlayLeft: 0.64,
-    overlayRight: 0.5,
-    overlayBottom: 0.8,
-    glowA: "rgba(180, 167, 196, 0.12)",
-    glowB: "rgba(226, 232, 240, 0.1)"
-  },
-  {
-    id: "clear",
-    name: "清透纸感",
-    description: "遮挡更少，像一层安静的半透明宣纸。",
-    glassAlpha: 0.46,
-    blur: 14,
-    cardScale: 0.98,
-    accent: "#a8b8c8",
-    overlayLeft: 0.54,
-    overlayRight: 0.38,
-    overlayBottom: 0.7,
-    glowA: "rgba(203, 213, 225, 0.1)",
-    glowB: "rgba(241, 245, 249, 0.08)"
-  }
-];
-
-const defaultTheme = themePresets[0];
-
-function loadThemeSettings() {
-  try {
-    const saved = JSON.parse(localStorage.getItem("gal-launcher-theme") || "{}");
-    const preset = themePresets.find((item) => item.id === saved.id) || defaultTheme;
-    return preset;
-  } catch {
-    return defaultTheme;
-  }
-}
-
-function buildLibraryStats(games: Game[], now: number) {
-  const weekAgo = now - 7 * 24 * 60 * 60 * 1000;
-  const monthAgo = now - 30 * 24 * 60 * 60 * 1000;
-  const totalSeconds = games.reduce((sum, game) => sum + getTotalPlaySeconds(game, now), 0);
-  const recent7 = games.filter((game) => game.lastPlayedAt && new Date(game.lastPlayedAt).getTime() >= weekAgo).length;
-  const recent30 = games.filter((game) => game.lastPlayedAt && new Date(game.lastPlayedAt).getTime() >= monthAgo).length;
-  const mostPlayed = [...games].sort((a, b) => getTotalPlaySeconds(b, now) - getTotalPlaySeconds(a, now))[0];
-  const incomplete = games.filter((game) => completeness(game) < 100).length;
-  const ranking = [...games].sort((a, b) => getTotalPlaySeconds(b, now) - getTotalPlaySeconds(a, now));
-  const topSeconds = Math.max(1, getTotalPlaySeconds(ranking[0] || ({} as Game), now));
-  return { totalSeconds, recent7, recent30, mostPlayed, incomplete, ranking, topSeconds };
-}
 
 function App() {
   const [games, setGames] = useState<Game[]>([]);
   const [selectedId, setSelectedId] = useState("");
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<GameStatus | "全部">("全部");
-  const [viewMode, setViewMode] = useState<"library" | "collection" | "stats">("library");
+  const [viewMode, setViewMode] = useState<"library" | "collection">("library");
   const [isEditing, setIsEditing] = useState(false);
   const [isInfoOpen, setIsInfoOpen] = useState(false);
   const [isThemeOpen, setIsThemeOpen] = useState(false);
@@ -243,6 +59,10 @@ function App() {
   const [isSearchingMetadata, setIsSearchingMetadata] = useState(false);
   const [metadataKeyword, setMetadataKeyword] = useState("");
   const [clockTick, setClockTick] = useState(Date.now());
+  const [prevImage, setPrevImage] = useState<string | null>(null);
+  const [fadingImage, setFadingImage] = useState<string | null>(null);
+  const [tagFilter, setTagFilter] = useState<string | null>(null);
+  const [ctxMenu, setCtxMenu] = useState<{ game: Game; x: number; y: number } | null>(null);
   const shelfRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -262,8 +82,27 @@ function App() {
   }, []);
 
   useEffect(() => {
+    if (!notice) return;
+    const timer = setTimeout(() => setNotice(""), 3500);
+    return () => clearTimeout(timer);
+  }, [notice]);
+
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key !== "Escape") return;
+      if (isThemeOpen) { setIsThemeOpen(false); return; }
+      if (isCoverPickerOpen) { setIsCoverPickerOpen(false); return; }
+      if (isCandidatePickerOpen) { setIsCandidatePickerOpen(false); return; }
+      if (isEditing) { closeEdit(); return; }
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [isThemeOpen, isCoverPickerOpen, isCandidatePickerOpen, isEditing]);
+
+  useEffect(() => {
     localStorage.setItem("gal-launcher-theme", JSON.stringify(themeSettings));
   }, [themeSettings]);
+
 
   useEffect(() => {
     return window.galLauncher.onPlaySessionEnded((event: PlaySessionEndedEvent) => {
@@ -326,6 +165,15 @@ function App() {
 
   const selected = games.find((game) => game.id === selectedId) ?? games[0] ?? null;
   const selectedImage = selected ? imageCache[selected.backgroundPath] || imageCache[selected.coverPath] : "";
+
+  useEffect(() => {
+    if (selectedImage && selectedImage !== prevImage && prevImage !== null) {
+      setFadingImage(prevImage);
+      const timer = setTimeout(() => setFadingImage(null), 500);
+      return () => clearTimeout(timer);
+    }
+    setPrevImage(selectedImage);
+  }, [selectedImage]);
   const usesCoverFallback = selected ? !selected.backgroundPath || selected.backgroundPath === selected.coverPath : false;
 
   useEffect(() => {
@@ -359,11 +207,12 @@ function App() {
     const needle = query.trim().toLowerCase();
     return games
       .filter((game) => statusFilter === "全部" || game.status === statusFilter)
+      .filter((game) => !tagFilter || game.tags.includes(tagFilter))
       .filter((game) => {
         if (!needle) return true;
         return [game.title, game.originalTitle, game.developer, ...game.tags].some((value) => value.toLowerCase().includes(needle));
       });
-  }, [games, query, statusFilter]);
+  }, [games, query, statusFilter, tagFilter]);
 
   const collectionGames = useMemo(() => {
     const needle = query.trim().toLowerCase();
@@ -406,16 +255,28 @@ function App() {
   }
 
   function mergeMetadata(game: Game, metadata: Partial<PickedLaunchFile>) {
+    // 防止 VNDB 英文简介覆盖已有中文简介（翻译失败时回退到英文原文）
+    const newDescription = metadata.description || "";
+    const cjk = /[㐀-鿿]/;
+    const oldHasCjk = cjk.test(game.description || "");
+    const newHasCjk = cjk.test(newDescription);
+    const description = newHasCjk || !newDescription ? newDescription || game.description : (oldHasCjk ? game.description : newDescription);
     return {
       ...game,
       title: metadata.title || game.title,
       originalTitle: metadata.originalTitle || game.originalTitle,
-      description: metadata.description || game.description,
+      description,
       developer: metadata.developer || game.developer,
       releaseDate: metadata.releaseDate || game.releaseDate,
       coverPath: game.coverPath || metadata.coverPath || "",
       backgroundPath: game.backgroundPath || metadata.backgroundPath || metadata.coverPath || game.coverPath,
-      tags: metadata.tags?.length ? metadata.tags : game.tags
+      tags: metadata.tags?.length ? metadata.tags : game.tags,
+      // 用户主动重搜资料 → 重置 Bangumi 状态以用新元数据重新查询
+      bgmRatingCheckedAt: undefined,
+      bgmScore: 0,
+      bgmScoreCount: 0,
+      bgmRank: 0,
+      bgmId: 0
     };
   }
 
@@ -577,6 +438,15 @@ function App() {
     setIsEditing(false);
   }
 
+  function openContextMenu(e: React.MouseEvent, game: Game) {
+    e.preventDefault();
+    setCtxMenu({ game, x: e.clientX, y: e.clientY });
+  }
+
+  function closeContextMenu() {
+    setCtxMenu(null);
+  }
+
   function saveDraft() {
     if (!draft) return;
     persistGame(draft);
@@ -595,9 +465,27 @@ function App() {
     active: games.filter((game) => game.status === "进行中").length,
     done: games.filter((game) => game.status === "已通关").length
   };
-  const libraryStats = useMemo(() => {
-    return buildLibraryStats(games, clockTick);
+  const totalSeconds = useMemo(() => {
+    return games.reduce((sum, game) => sum + getTotalPlaySeconds(game, clockTick), 0);
   }, [games, clockTick]);
+  const recentGames = useMemo(() => {
+    return games
+      .filter((g) => g.lastPlayedAt)
+      .sort((a, b) => new Date(b.lastPlayedAt!).getTime() - new Date(a.lastPlayedAt!).getTime())
+      .slice(0, 3);
+  }, [games]);
+  const popularTags = useMemo(() => {
+    const freq: Record<string, number> = {};
+    for (const g of games) {
+      for (const t of g.tags) {
+        if (t) freq[t] = (freq[t] || 0) + 1;
+      }
+    }
+    return Object.entries(freq)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 8)
+      .map(([tag]) => tag);
+  }, [games]);
   const themeStyle = {
     "--glass-alpha": themeSettings.glassAlpha,
     "--glass-blur": `${themeSettings.blur}px`,
@@ -618,49 +506,67 @@ function App() {
         ))}
       </div>
       <div className="backdrop" style={{ backgroundImage: selectedImage ? `url("${selectedImage}")` : undefined }} />
+      {fadingImage && <div className="backdrop fading" style={{ backgroundImage: `url("${fadingImage}")` }} />}
       <div className="backdrop-mask" />
 
       <aside className="rail">
         <div className="rail-logo">
           <Gamepad2 size={24} />
         </div>
-        <button className={viewMode === "library" && statusFilter === "全部" ? "rail-button active" : "rail-button"} title="全部游戏" onClick={() => { setViewMode("library"); setStatusFilter("全部"); }}>
+        <button className={viewMode === "library" && statusFilter === "全部" ? "rail-button active" : "rail-button"} aria-label="全部游戏" onClick={() => { setViewMode("library"); setStatusFilter("全部"); }}>
           <Home size={20} />
         </button>
-        <button className={viewMode === "collection" ? "rail-button active" : "rail-button"} title="收藏展示柜" onClick={() => { setViewMode("collection"); setStatusFilter("全部"); }}>
+        <button className={viewMode === "collection" ? "rail-button active" : "rail-button"} aria-label="收藏展示柜" onClick={() => { setViewMode("collection"); setStatusFilter("全部"); }}>
           <Library size={20} />
         </button>
-        <button className={viewMode === "stats" ? "rail-button active" : "rail-button"} title="游玩统计" onClick={() => setViewMode("stats")}>
-          <BarChart3 size={20} />
-        </button>
-        <button className={viewMode === "library" && statusFilter === "进行中" ? "rail-button active" : "rail-button"} title="进行中" onClick={() => { setViewMode("library"); setStatusFilter("进行中"); }}>
+        <button className={viewMode === "library" && statusFilter === "进行中" ? "rail-button active" : "rail-button"} aria-label="进行中" onClick={() => { setViewMode("library"); setStatusFilter("进行中"); }}>
           <Clock3 size={20} />
         </button>
-        <button className="rail-button" title="导出备份" onClick={exportBackup}>
+        <button className="rail-button" aria-label="导出备份" onClick={exportBackup}>
           <Download size={19} />
         </button>
-        <button className="rail-button" title="恢复备份" onClick={importBackup}>
+        <button className="rail-button" aria-label="恢复备份" onClick={importBackup}>
           <Upload size={19} />
         </button>
-        <button className="rail-button" title="主题设置" onClick={() => setIsThemeOpen(true)}>
+        <button className="rail-button" aria-label="主题设置" onClick={() => setIsThemeOpen(true)}>
           <SlidersHorizontal size={19} />
         </button>
-        <button className="rail-button add" title="添加游戏" onClick={addGame}>
+        <button className="rail-button add" aria-label="添加游戏" onClick={addGame}>
           <Plus size={20} />
         </button>
       </aside>
 
-      <main className={`stage ${viewMode !== "library" ? "stats-stage" : ""}`}>
+      <main className="stage" style={viewMode !== "library" ? { gridTemplateRows: "60px minmax(0, 1fr)" } as React.CSSProperties : undefined}>
         <header className="stage-top">
           <div className="search-pill">
             <Search size={18} />
             <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜索标题、会社、标签" />
           </div>
           <div className="stage-stats">
+            <span>{formatPlayTime(totalSeconds)}</span>
             <span>{counts.total} 部作品</span>
             <span>进行中 {counts.active}</span>
             <span>已通关 {counts.done}</span>
           </div>
+          {viewMode === "library" && recentGames.length > 0 && (
+            <div className="recent-row">
+              <span className="recent-label">继续游戏</span>
+              {recentGames.map((g) => (
+                <button key={g.id} className="recent-chip" onClick={() => { setSelectedId(g.id); setStatusFilter("全部"); setTagFilter(null); }}>
+                  {g.title}
+                </button>
+              ))}
+            </div>
+          )}
+          {viewMode === "library" && popularTags.length > 0 && (
+            <div className="tag-row">
+              {popularTags.map((tag) => (
+                <button key={tag} className={`tag-chip ${tagFilter === tag ? "active" : ""}`} onClick={() => setTagFilter(tagFilter === tag ? null : tag)}>
+                  {tag}
+                </button>
+              ))}
+            </div>
+          )}
         </header>
 
         {viewMode === "collection" ? (
@@ -681,6 +587,8 @@ function App() {
                   <button
                     key={game.id}
                     className="collection-poster-card"
+                    aria-label={game.title}
+                    onContextMenu={(e) => openContextMenu(e, game)}
                     onClick={() => {
                       setSelectedId(game.id);
                       setStatusFilter("全部");
@@ -708,53 +616,10 @@ function App() {
               )}
             </div>
           </section>
-        ) : viewMode === "stats" ? (
-          <section className="stats-view">
-            <div className="stats-summary">
-              <div className="stats-hero">
-                <p>游玩统计</p>
-                <h1>{formatPlayTime(libraryStats.totalSeconds)}</h1>
-                <span>{counts.total} 部作品 · {libraryStats.incomplete} 部资料待补全</span>
-              </div>
-              <div className="stats-grid">
-                <div><span>最近 7 天启动</span><strong>{libraryStats.recent7} 部</strong></div>
-                <div><span>最近 30 天启动</span><strong>{libraryStats.recent30} 部</strong></div>
-                <div><span>进行中</span><strong>{counts.active} 部</strong></div>
-                <div><span>已通关</span><strong>{counts.done} 部</strong></div>
-              </div>
-            </div>
-            <div className="top-podium">
-              {libraryStats.ranking.slice(0, 3).map((game, index) => (
-                <button key={game.id} className={`podium-card rank-${index + 1}`} onClick={() => { setSelectedId(game.id); setViewMode("library"); }}>
-                  <span>#{index + 1}</span>
-                  <strong>{game.title}</strong>
-                  <small>{formatPlayTime(getTotalPlaySeconds(game, clockTick))}</small>
-                </button>
-              ))}
-            </div>
-            <div className="stats-list">
-              <div className="stats-list-head">
-                <span>游玩时长排行</span>
-                <strong>{libraryStats.mostPlayed?.title || "暂无记录"}</strong>
-              </div>
-              {libraryStats.ranking.slice(0, 10).map((game, index) => {
-                const seconds = getTotalPlaySeconds(game, clockTick);
-                const percent = Math.max(3, Math.round((seconds / libraryStats.topSeconds) * 100));
-                return (
-                  <button key={game.id} className="rank-row" onClick={() => { setSelectedId(game.id); setViewMode("library"); }}>
-                    <span className="rank-number">{String(index + 1).padStart(2, "0")}</span>
-                    <span className="rank-title">{game.title}</span>
-                    <span className="rank-bar"><i style={{ width: `${percent}%` }} /></span>
-                    <strong>{formatPlayTime(seconds)}</strong>
-                  </button>
-                );
-              })}
-            </div>
-          </section>
         ) : selected ? (
           <section className="feature">
             <div className="showcase-art">
-              {selectedImage ? <img className="hero-visual" src={selectedImage} alt="" /> : <Gamepad2 size={72} />}
+              {!selectedImage && <Gamepad2 size={72} />}
               <div className="showcase-glow" />
               <div className="showcase-overlay">
                 <p>{selected.developer || "Visual Novel"}</p>
@@ -797,8 +662,8 @@ function App() {
               element.scrollLeft += event.deltaY || event.deltaX;
             }}
           >
-            {filteredGames.map((game) => (
-              <button key={game.id} className={`shelf-card ${game.id === selected?.id ? "active" : ""}`} onClick={() => setSelectedId(game.id)}>
+            {filteredGames.map((game, index) => (
+              <button key={game.id} className={`shelf-card ${game.id === selected?.id ? "active" : ""}`} style={{ '--i': index } as React.CSSProperties} onClick={() => setSelectedId(game.id)} onContextMenu={(e) => openContextMenu(e, game)} aria-label={game.title}>
                 <div className="shelf-cover">
                   {imageCache[game.coverPath] ? <img src={imageCache[game.coverPath]} alt="" /> : <Gamepad2 size={30} />}
                   <span>{game.title}</span>
@@ -809,80 +674,19 @@ function App() {
         </section>}
       </main>
 
-      <aside className={`side-sheet ${isInfoOpen ? "open" : ""}`}>
-        {selected && (
-          <>
-            <button className="sheet-close" onClick={() => setIsInfoOpen(false)}>
-              <X size={18} />
-            </button>
-            <p className="sheet-kicker">{selected.developer || "Visual Novel"}</p>
-            <h1>{selected.title}</h1>
-            <p className="sheet-original">{selected.originalTitle || selected.releaseDate || "本地游戏"}</p>
-            <div className="feature-tags">
-              <span className={`status-pill ${statusMeta[selected.status].tone}`}>{selected.status}</span>
-              {selected.currentSessionStartedAt && <span className="playing-pill">正在游玩</span>}
-              {selected.releaseDate && <span>{selected.releaseDate}</span>}
-            </div>
-            <div className="sheet-actions">
-              <button className="soft-button" onClick={() => openMetadataCandidates(selected, metadataKeyword)} disabled={isSearchingMetadata}>
-                <RefreshCw size={18} />
-                {isSearchingMetadata ? "搜索中" : "重搜资料"}
-              </button>
-              <button className="soft-button" onClick={() => findCovers(selected)} disabled={isFindingCovers}>
-                <ImagePlus size={18} />
-                {isFindingCovers ? "查找中" : "找横版图"}
-              </button>
-              <button className="soft-button" onClick={() => startEdit(selected)}>
-                <Edit3 size={18} />
-                编辑
-              </button>
-              <button className="soft-button danger" onClick={() => deleteGame(selected)}>
-                <Trash2 size={18} />
-                删除
-              </button>
-            </div>
-            <div className="completeness-card">
-              <div className="completeness-head">
-                <ShieldCheck size={16} />
-                <span>资料完整度</span>
-                <strong>{completeness(selected)}%</strong>
-              </div>
-              <div className="completeness-list">
-                {metadataChecks(selected).map((item) => (
-                  <span key={item.label} className={item.ok ? "ok" : "missing"}>{item.label}</span>
-                ))}
-              </div>
-            </div>
-            <div className="sheet-stats">
-              <div>
-                <span>最近游玩</span>
-                <strong>{formatDate(selected.lastPlayedAt)}</strong>
-              </div>
-              <div>
-                <span>启动次数</span>
-                <strong>{selected.playCount}</strong>
-              </div>
-              <div>
-                <span>游玩时长</span>
-                <strong>{formatPlayTime(getTotalPlaySeconds(selected, clockTick))}</strong>
-              </div>
-              <div>
-                <span>Bangumi评分</span>
-                <strong>{formatBgmRating(selected)}</strong>
-              </div>
-            </div>
-            <div className="sheet-heading">
-              <Tags size={16} />
-              资料
-            </div>
-            <p className="sheet-description">{selected.description || "暂无简介"}</p>
-            <div className="sheet-path">
-              <FolderOpen size={15} />
-              <span>{selected.executablePath}</span>
-            </div>
-          </>
-        )}
-      </aside>
+      <SideSheet
+        game={selected}
+        isOpen={isInfoOpen}
+        onClose={() => setIsInfoOpen(false)}
+        clockTick={clockTick}
+        onRescanMetadata={openMetadataCandidates}
+        onFindCovers={findCovers}
+        onEdit={startEdit}
+        onDelete={deleteGame}
+        isSearchingMetadata={isSearchingMetadata}
+        isFindingCovers={isFindingCovers}
+        metadataKeyword={metadataKeyword}
+      />
 
       {isEditing && draft && (
         <div className="modal-backdrop">
@@ -967,17 +771,30 @@ function App() {
             </div>
 
             <div className="candidate-grid">
-              {coverCandidates.map((candidate) => (
-                <button key={candidate.id} className="candidate-card" onClick={() => chooseCover(candidate)}>
-                  <div className="candidate-image">
-                    {imageCache[candidate.path] ? <img src={imageCache[candidate.path]} alt="" /> : <Gamepad2 size={30} />}
-                  </div>
-                  <strong>{candidate.source}</strong>
-                  <span>{candidate.width} x {candidate.height}</span>
-                  <small>{candidate.reason}</small>
-                </button>
-              ))}
-              {coverCandidates.length === 0 && <p className="candidate-empty">没有找到符合横版比例的候选图。</p>}
+              {isFindingCovers
+                ? Array.from({ length: 8 }).map((_, i) => (
+                    <div key={i} className="candidate-card skeleton">
+                      <div className="candidate-image skeleton-pulse" />
+                      <div className="skeleton-line" style={{ width: "60%" }} />
+                      <div className="skeleton-line" style={{ width: "40%" }} />
+                    </div>
+                  ))
+                : coverCandidates.map((candidate) => (
+                    <button key={candidate.id} className="candidate-card" onClick={() => chooseCover(candidate)}>
+                      <div className="candidate-image">
+                        {imageCache[candidate.path] ? <img src={imageCache[candidate.path]} alt="" /> : <Gamepad2 size={30} />}
+                      </div>
+                      <span
+                        className="source-badge"
+                        style={{ "--badge-color": sourceColors[candidate.source] || "#888" } as React.CSSProperties}
+                      >
+                        {candidate.source}
+                      </span>
+                      <span>{candidate.width} x {candidate.height}</span>
+                      <small>{candidate.reason}</small>
+                    </button>
+                  ))}
+              {!isFindingCovers && coverCandidates.length === 0 && <p className="candidate-empty">没有找到符合横版比例的候选图。</p>}
             </div>
           </section>
         </div>
@@ -1022,6 +839,25 @@ function App() {
         </div>
       )}
 
+      {ctxMenu && (
+        <>
+          <div className="ctx-backdrop" onClick={closeContextMenu} onContextMenu={(e) => { e.preventDefault(); closeContextMenu(); }} />
+          <div className="ctx-menu" style={{ left: ctxMenu.x, top: ctxMenu.y }}>
+            <button onClick={() => { launch(ctxMenu.game); closeContextMenu(); }}><Play size={16} /> 启动</button>
+            <div className="ctx-divider" />
+            <div className="ctx-subheader">修改状态</div>
+            {statuses.map((s) => (
+              <button key={s} className={ctxMenu.game.status === s ? "ctx-active" : ""} onClick={() => { persistGame({ ...ctxMenu.game, status: s }); closeContextMenu(); }}>
+                {ctxMenu.game.status === s ? "✓ " : ""}{s}
+              </button>
+            ))}
+            <div className="ctx-divider" />
+            <button onClick={() => { startEdit(ctxMenu.game); closeContextMenu(); }}><Edit3 size={16} /> 编辑</button>
+            <button className="ctx-danger" onClick={() => { deleteGame(ctxMenu.game); closeContextMenu(); }}><Trash2 size={16} /> 删除</button>
+          </div>
+        </>
+      )}
+
       {isThemeOpen && (
         <div className="modal-backdrop">
           <section className="modal theme-modal">
@@ -1060,7 +896,7 @@ function App() {
       )}
 
       {notice && (
-        <button className="toast" onClick={() => setNotice("")}>
+        <button className="toast" onClick={() => setNotice("")} role="status" aria-live="polite">
           {notice}
         </button>
       )}

@@ -1,157 +1,211 @@
 <p align="center">
-  <img src="docs/assets/gal-launcher-preview.svg" alt="Gal Launcher preview" width="960">
+  <img src="docs/assets/screenshots/hero.png" alt="Gal Launcher" width="960">
 </p>
 
-<h1 align="center">Gal Launcher</h1>
+<h1 align="center">✨ Gal Launcher</h1>
 
 <p align="center">
-  A Steam-like local launcher for Galgame and visual novels.
+  <strong>让本地 Galgame 库也拥有 Steam 级的封面墙和沉浸启动体验。</strong>
   <br>
-  像 Steam 一样管理本地 Galgame / 视觉小说。
+  <sub>A Steam-style launcher for your local visual novel library — browse, launch, track.</sub>
 </p>
 
 <p align="center">
-  <a href="https://github.com/KamiNeko-pre/gal-launcher/releases"><strong>Download</strong></a>
+  <a href="https://github.com/KamiNeko-pre/gal-launcher/releases"><strong>⬇️ 下载 Download</strong></a>
   ·
-  <a href="docs/USER_GUIDE.md">User Guide</a>
+  <a href="docs/USER_GUIDE.md">📖 使用教程</a>
   ·
-  <a href="ROADMAP.md">Roadmap</a>
+  <a href="ROADMAP.md">🗺️ 路线图</a>
   ·
-  <a href="docs/DATA_SOURCES.md">Data Sources</a>
+  <a href="docs/DATA_SOURCES.md">📡 数据来源</a>
 </p>
 
 <p align="center">
   <img alt="Windows" src="https://img.shields.io/badge/platform-Windows-8aa6bd">
   <img alt="Electron" src="https://img.shields.io/badge/Electron-38-9fb7ca">
   <img alt="React" src="https://img.shields.io/badge/React-19-9fb7ca">
+  <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-5.8-9fb7ca">
   <img alt="License" src="https://img.shields.io/badge/license-MIT-d8e0e8">
 </p>
 
-> Gal Launcher does **not** provide games, downloads, cracks, or DRM bypass tools. It only manages games already installed on your own computer.
->
-> 本项目不提供游戏本体、不提供下载资源、不提供破解。它只是一个本地游戏库管理工具。
+> **Disclaimer / 免责声明**：Gal Launcher 不提供游戏本体、下载资源、破解或 DRM 绕过工具。它只管理你已安装到本地的游戏。This project does NOT provide games, downloads, cracks, or DRM bypass tools.
 
-## Why
+---
 
-Many visual novels live in folders named `game.exe`, `start.exe`, or `SiglusEngine.exe`. After a while, it becomes hard to remember what each folder is, what you have played, and where the right launcher is.
+## 🤔 这到底是什么？
 
-Gal Launcher turns those folders into a clean local library:
+硬盘里一堆 `game.exe`、`SiglusEngine.exe`、`start.exe`……久而久之根本分不清哪个文件夹是哪部作品，想重温也找不到入口。
 
-- cover wall for browsing
-- key visual launch page
-- one-click launch
-- play count and play time tracking
-- metadata, cover, background, and rating lookup
-- local backup and restore
+Gal Launcher 把那些文件夹变成**一张封面墙**：
 
-## Download
+- 🎮 给每个游戏匹配封面和背景图
+- 🖼️ 横版全屏启动页 + 毛玻璃悬浮 UI
+- ⚡ 一键启动，自动追踪游戏时长
+- 📡 从 VNDB / Bangumi / Steam 等 7 个来源搜刮资料和封面
+- 🔒 数据全存本地，不依赖任何云服务
 
-Go to [Releases](https://github.com/KamiNeko-pre/gal-launcher/releases) and download:
+**本质上就是一个「本地 Galgame 的 Steam 库」。**
 
-```text
-Gal Launcher.exe
+---
+
+## 🎨 功能亮点
+
+<table>
+<tr>
+  <td width="50%">
+    <h4>🖼️ 封面墙浏览</h4>
+    <p>竖版封面横向滚动，3D 悬浮效果，和 Steam 库一样的浏览体验。</p>
+  </td>
+  <td width="50%">
+    <h4>🎮 沉浸启动页</h4>
+    <p>横版全屏背景 + 毛玻璃悬浮 UI + 一键启动，仪式感拉满。</p>
+  </td>
+</tr>
+<tr>
+  <td>
+    <h4>📡 多源资料搜索</h4>
+    <p>VNDB 搜资料 + Bangumi 查评分 + Steam / DLsite / 2DFan 等 7 源搜封面。</p>
+  </td>
+  <td>
+    <h4>⏱️ 游玩追踪</h4>
+    <p>自动记录启动次数、总时长、最近 2 周时长、游玩记录历史。</p>
+  </td>
+</tr>
+<tr>
+  <td>
+    <h4>🎨 6 套毛玻璃主题</h4>
+    <p>冰蓝画廊 · 静雾灰蓝 · 墨蓝夜色 · 月白藤灰 · 清透纸感 · 霜月白</p>
+  </td>
+  <td>
+    <h4>🔒 本地优先</h4>
+    <p>数据全存本地 JSON。离线照常用，崩溃不丢数据。一键备份/恢复。</p>
+  </td>
+</tr>
+</table>
+
+---
+
+## 🎨 主题预览
+
+<p align="center">
+  <img src="docs/assets/screenshots/theme-picker.png" alt="主题切换" width="480">
+</p>
+
+| 主题 | 风格 |
+|------|------|
+| **冰蓝画廊** | 默认主题，全屏沉浸，冷蓝玻璃态 |
+| **静雾灰蓝** | 低饱和克制，适合长期使用 |
+| **墨蓝夜色** | 更深邃冷蓝，文字更突出 |
+| **月白藤灰** | 淡紫底调，素净沉静 |
+| **清透纸感** | 最少遮挡，像半透明宣纸 |
+| **霜月白** | 明亮浅色系，白天舒适 |
+
+---
+
+## ⚡ 快速开始
+
+```
+1. 下载 Gal Launcher.exe → 双击运行
+2. 点左下角 + 按钮 → 选游戏启动文件
+3. 等待自动搜索资料和封面（几秒钟）
+4. 点封面进入启动页 → 一键启动
 ```
 
-Double-click to run.
+支持 `exe / bat / cmd / lnk` 四种启动方式。执行目录会自动设为游戏所在文件夹，兼容性不用担心。
 
-Windows may show an "Unknown publisher" warning because the current public build is unsigned. If you downloaded it from this repository's Release page, choose continue/run.
+> 📖 完整教程：[使用指南](docs/USER_GUIDE.md)
 
-## Features
+---
 
-- Steam-like cover wall
-- Immersive horizontal key visual launch page
-- Add `.exe`, `.bat`, `.cmd`, and `.lnk` launch files
-- Track recent play time, total play time, and launch count
-- Search title, developer, release date, description, cover, and background candidates
-- Bangumi rating lookup
-- Manual metadata editing
-- Backup export/import
-- Local-first storage
+## 📸 截图画廊
 
-## Quick Start
+<p align="center">
+  <img src="docs/assets/screenshots/launch-page.png" alt="启动页" width="480">
+  <br>
+  <em>横版全屏启动页 + 毛玻璃悬浮 UI</em>
+</p>
 
-1. Open `Gal Launcher.exe`
-2. Click the `+` button
-3. Choose the game's launch file
-4. Let the app search metadata
-5. Pick the correct metadata/cover if needed
-6. Click a cover to enter the launch page
+<p align="center">
+  <img src="docs/assets/screenshots/side-sheet.png" alt="资料面板" width="480">
+  <br>
+  <em>游戏详情面板：时长统计 + 资料完整度 + 游玩记录</em>
+</p>
 
-Common launch files:
+<p align="center">
+  <img src="docs/assets/screenshots/cover-search.png" alt="封面搜索" width="480">
+  <br>
+  <em>7 源并行的封面候选搜索</em>
+</p>
 
-```text
-game.exe
-start.exe
-launcher.exe
-SiglusEngine.exe
-*.bat
-*.cmd
-*.lnk
-```
+> 截图内封面为渐变占位图，以规避版权问题。实际使用中会显示真实封面。
 
-Read the full [User Guide](docs/USER_GUIDE.md).
+---
 
-## Data And Privacy
+## 📡 数据来源
 
-Your library is stored locally, usually here:
+| 来源 | 用途 | 类型 |
+|------|------|------|
+| 🔵 VNDB | 游戏资料、开发商、发行日 | API |
+| 🟠 Bangumi | 评分查询、封面候选 | API + 网页 |
+| 🟢 Steam | 封面候选 | API |
+| 🔴 DLsite | 封面候选 | 网页 |
+| 🟣 2DFan | 封面候选 | 网页 |
+| 🟡 Lzacg | 封面候选 | 网页 |
+| ⚪ 官网 | 封面候选 | 网页爬取 |
 
-```text
-%APPDATA%\gal-launcher\library
-```
+详见 [数据来源说明](docs/DATA_SOURCES.md) 和 [隐私说明](docs/PRIVACY.md)。
 
-This may include game paths, cached covers, cached backgrounds, metadata, and play records.
+---
 
-Metadata search features may send search keywords to third-party services such as VNDB, Steam, or Bangumi. See [Privacy](docs/PRIVACY.md) and [Data Sources](docs/DATA_SOURCES.md).
+## 📊 对比
 
-## Screenshots
+| | Gal Launcher | Playnite | Steam | 手动管理 |
+|------|:---:|:---:|:---:|:---:|
+| Galgame 资料搜索 | ✅ VNDB | ❌ | ❌ | ❌ |
+| Bangumi 评分 | ✅ | ❌ | ❌ | ❌ |
+| 7 源封面搜索 | ✅ | ❌ | ❌ | ❌ |
+| 毛玻璃主题 | ✅ 6套 | ❌ | ❌ | ❌ |
+| 本地离线可用 | ✅ | ❌ | ❌ | ✅ |
+| 开源免费 | ✅ MIT | ✅ MIT | ❌ | ✅ |
 
-Real screenshots are intentionally not bundled yet because many covers and backgrounds are copyrighted by their original owners. The preview image above is a synthetic mockup made for this README.
+---
 
-If you share screenshots, please make sure you have the right to share the artwork shown in them.
-
-## For Developers
-
-Requirements:
-
-- Windows
-- Node.js
-- npm
-
-Run locally:
+## 🔧 开发
 
 ```bash
-npm install
-npm run dev
+# 环境要求：Windows + Node.js + npm
+
+npm install        # 安装依赖
+npm run dev        # 启动开发服务器（Vite + Electron）
+npm run build      # 生产构建
+npm run dist       # 打包解压版
+npm run dist:portable  # 打包单文件 portable exe
 ```
 
-Build:
+技术栈：Electron 38 · React 19 · TypeScript 5.8 · Vite 7 · 纯 CSS 变量（无 UI 框架）
 
-```bash
-npm run build
-```
+---
 
-Package unpacked Windows app:
+## 🗺️ 路线图
 
-```bash
-npm run dist
-```
+见 [ROADMAP.md](ROADMAP.md) — 近期计划包括 GIF 演示、集合视图增强、自动备份。
 
-Package portable exe:
+---
 
-```bash
-npm run dist:portable
-```
+## 🤝 参与贡献
 
-## Roadmap
+欢迎提 Issue 和 PR。注意不要上传游戏文件、封面图片、个人库数据。
 
-See [ROADMAP.md](ROADMAP.md).
+详见 [CONTRIBUTING.md](CONTRIBUTING.md) · [行为准则](CODE_OF_CONDUCT.md)
 
-## Contributing
+---
 
-Issues and suggestions are welcome.
+## 📄 License
 
-Please do not upload game files, downloaded covers/backgrounds, or personal library data. See [CONTRIBUTING.md](CONTRIBUTING.md).
+MIT © 2026 Gal Launcher
 
-## License
-
-MIT. See [LICENSE](LICENSE).
+<p align="center">
+  <sub>如果你觉得这个项目有用，请给一个 ⭐ Star 支持一下~</sub>
+  <br>
+  <sub>觉得好用的话，欢迎在 VNDB / Bangumi / 其乐 / 绯月 分享给更多人 🙏</sub>
+</p>

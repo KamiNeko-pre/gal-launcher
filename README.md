@@ -105,7 +105,7 @@ Gal Launcher 把那些文件夹变成**一张封面墙**：
 ## ⚡ 快速开始
 
 ```
-1. 下载 Gal Launcher.exe → 双击运行
+1. 下载 Gal-Launcher-vX.X.X.zip → 解压 → 双击 Gal Launcher.exe
 2. 点左下角 + 按钮 → 选游戏启动文件
 3. 等待自动搜索资料和封面（几秒钟）
 4. 点封面进入启动页 → 一键启动

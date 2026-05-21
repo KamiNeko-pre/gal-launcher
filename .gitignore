@@ -39,6 +39,9 @@ desktop.ini
 *.swp
 *.swo
 
+# Claude Code local config
+.claude/
+
 # Environment and secrets
 .env
 .env.*

@@ -1,5 +1,12 @@
 export type GameStatus = "想玩" | "未开始" | "进行中" | "已通关" | "搁置";
 
+export interface PlaySession {
+  sessionId: string;
+  startedAt: string;
+  endedAt: string;
+  durationSeconds: number;
+}
+
 export interface Game {
   id: string;
   title: string;
@@ -27,6 +34,7 @@ export interface Game {
   lastPlayedAt: string | null;
   createdAt: string;
   updatedAt: string;
+  sessions?: PlaySession[];
 }
 
 export interface LaunchResult {

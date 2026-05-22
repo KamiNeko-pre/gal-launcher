@@ -1537,7 +1537,7 @@ button {
    RESPONSIVE
    ================================================ */
 
-@media (max-width: 1320px) {
+@media (max-width: 980px) {
   .app-shell {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -1548,6 +1548,10 @@ button {
 
   .feature {
     place-items: stretch;
+  }
+
+  .floating-info {
+    display: none;
   }
 }
 

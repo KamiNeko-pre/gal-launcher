@@ -466,7 +466,6 @@ button {
   display: grid;
   place-items: stretch;
   min-height: 0;
-  pointer-events: none;
   opacity: 1;
   transition: opacity var(--duration-normal) var(--ease-out);
 }

@@ -46,7 +46,9 @@
       "electron/**/*",
       "package.json"
     ],
+    "icon": "build/icon.png",
     "win": {
+      "icon": "build/icon.png",
       "signAndEditExecutable": false,
       "target": [
         {

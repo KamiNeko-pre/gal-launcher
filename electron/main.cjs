@@ -583,7 +583,7 @@ function expandSearchAlias(query) {
   if (/amakano2pe|amakanop[e]?|amakano2/i.test(query)) output.push("甜蜜女友2", "アマカノ2");
   if (/anemoi/i.test(query)) output.push("anemoi");
   if (/\bwa\s*2\b|white\s*album\s*2|white\s*album2|bum2/i.test(query)) output.push("WHITE ALBUM2", "白色相簿2", "白色相簿 2");
-  if (/tsukiniyori|tsuki\s*ni\s*yori\s*sou|otome\s*no\s*sahou|近月|キンゲツ|つきに?より|tukiniyori/i.test(query)) output.push("Tsuki ni Yori Sou Otome no Sahou", "月に寄りそう乙女の作法", "近月少女的礼仪", "近月少女");
+  if (/tsukiniyori|tsuki\s*ni\s*yori|otome\s*no\s*sahou|近月|キンゲツ|つきに?より|tukiniyori/i.test(query)) output.push("Tsuki ni Yori Sou Otome no Sahou", "Tsuki ni Yorisou Otome no Sahou", "月に寄りそう乙女の作法", "近月少女的礼仪", "近月少女");
   return output;
 }
 

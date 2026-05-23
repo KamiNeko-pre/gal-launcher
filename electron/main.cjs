@@ -1001,9 +1001,9 @@ async function downloadCandidate(game, url, source, sourceWeight, reason) {
   if (!fs.existsSync(filePath) || fs.statSync(filePath).size === 0) {
     const response = await fetch(url, {
       headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36" },
-      signal: AbortSignal.timeout(8000)
+      signal: AbortSignal.timeout(20000)
     });
-    if (!response.ok) return null;
+    if (!response.ok) { console.log(`[cover] ${source} download failed: HTTP ${response.status} — ${url.slice(0, 80)}`); return null; }
     fs.writeFileSync(filePath, Buffer.from(await response.arrayBuffer()));
   }
 
@@ -1663,15 +1663,15 @@ async function findVndbScreenshotCandidates(game) {
 
   const downloads = [];
   for (const { vn, confidence } of Array.from(bestById.values()).slice(0, 2)) {
-    const urls = Array.from(new Set((vn.screenshots || []).flatMap((shot) => [shot.url, shot.thumbnail]).filter(Boolean)));
+    const urls = Array.from(new Set((vn.screenshots || []).flatMap((shot) => shot.url ? [shot.url] : []).filter(Boolean)));
     for (const [index, url] of urls.slice(0, 10).entries()) {
       downloads.push(downloadCandidate(game, url, "VNDB截图", 116 + confidence * 22 - index * 2, `${vn.title || vn.id} / ${vn.id}`));
     }
   }
 
   const results = await Promise.allSettled(downloads);
-    return results.flatMap((item) => (item.status === "fulfilled" && item.value ? [item.value] : []));
-  }
+  return results.flatMap((item) => (item.status === "fulfilled" && item.value ? [item.value] : []));
+}
 
   async function findVndbImageCandidates(game) {
     const queries = titleQueriesFor(game).slice(0, 6);

@@ -33,6 +33,18 @@ const { pathToFileURL } = require("node:url");
     });
   }
 
+async function configureProxy(proxyPort) {
+  if (!proxyPort) return;
+  try {
+    await session.defaultSession.setProxy({
+      proxyRules: `http://127.0.0.1:${proxyPort}`,
+      proxyBypassRules: "lzacg.cc,*.lzacg.cc,ossimg.nyaya.top,*.ossimg.nyaya.top,<local>"
+    });
+  } catch (err) {
+    console.warn("[proxy] 代理配置失败，使用直连:", err.message);
+  }
+}
+
 protocol.registerSchemesAsPrivileged([
   {
     scheme: "local-file",
@@ -565,6 +577,29 @@ function isGenericSearchText(value) {
   ]).has(text);
 }
 
+function collectTitleVariants(game) {
+  const terms = [];
+  const add = (v) => { if (v && typeof v === "string" && cleanText(v)) terms.push(cleanText(v)); };
+
+  add(game.title);
+  add(game.originalTitle);
+  add(game.developer);
+  add(path.basename(game.installPath || ""));
+  add(path.basename(path.dirname(game.installPath || "")));
+  add(path.basename(game.executablePath || "", path.extname(game.executablePath || "")));
+
+  // VNDB-enriched metadata from "重搜资料"
+  add(game.vndbTitle);
+  add(game.vndbOriginalTitle);
+
+  // Tags as extra context
+  for (const tag of normalizeTags(game.tags || []).slice(0, 3)) {
+    add(tag);
+  }
+
+  return Array.from(new Set(terms.filter(Boolean)));
+}
+
 function expandSearchAlias(query) {
   const output = [query];
   if (/sakuranotoki|sakura\s*no\s*toki|sakura\s*toki/i.test(query)) output.push("Sakura no Toki", "サクラノ刻", "樱之刻", "櫻之刻");
@@ -588,43 +623,26 @@ function expandSearchAlias(query) {
 }
 
 function titleQueriesFor(game) {
-  const parent = path.basename(path.dirname(game.installPath || ""));
-  const raw = [
-    game.originalTitle,
-    game.title,
-    path.basename(game.installPath || ""),
-    parent,
-    path.basename(game.executablePath || "", path.extname(game.executablePath || ""))
-  ];
-
-  return Array.from(
-    new Set(
-      raw
-        .map(normalizeSearchText)
-        .filter((item) => !isGenericSearchText(item))
-        .flatMap(expandSearchAlias)
-    )
-  ).slice(0, 7);
+  const variants = collectTitleVariants(game);
+  // Apply hardcoded aliases only to the primary 2 variants
+  const primary = variants.slice(0, 2).flatMap(expandSearchAlias);
+  const rest = variants.slice(2).map(normalizeSearchText).filter((item) => !isGenericSearchText(item));
+  return Array.from(new Set([...primary, ...rest].filter((item) => !isGenericSearchText(item)))).slice(0, 10);
 }
 
 function rawTitleQueriesFor(game) {
-  const raw = [
-    game.title,
-    game.originalTitle,
-    path.basename(game.installPath || ""),
-    path.basename(path.dirname(game.installPath || "")),
-    path.basename(game.executablePath || "", path.extname(game.executablePath || ""))
-  ];
-  return Array.from(
-    new Set(
-      raw
-        .map((item) => cleanText(item).replace(/\.(exe|bat|cmd|lnk)$/i, ""))
-        .filter((item) => !isGenericSearchText(item))
-        .flatMap((item) => [item, normalizeSearchText(item)])
-        .flatMap(expandSearchAlias)
-        .filter((item) => !isGenericSearchText(item))
-    )
-  ).slice(0, 12);
+  const variants = collectTitleVariants(game);
+  // Primary variants get alias expansion + dual raw/normalized forms
+  const primary = variants.slice(0, 2).flatMap((item) => {
+    const raw = cleanText(item).replace(/\.(exe|bat|cmd|lnk)$/i, "");
+    return expandSearchAlias(raw).flatMap((q) => [q, normalizeSearchText(q)]);
+  });
+  // Secondary variants: just normalized form
+  const secondary = variants.slice(2).map((item) => {
+    const raw = cleanText(item).replace(/\.(exe|bat|cmd|lnk)$/i, "");
+    return normalizeSearchText(raw);
+  });
+  return Array.from(new Set([...primary, ...secondary].filter((item) => !isGenericSearchText(item)))).slice(0, 16);
 }
 
 function similarity(a, b) {
@@ -765,7 +783,7 @@ function pickPreferredTitle(vn) {
 }
 
 async function searchVndb(query) {
-  const response = await fetch("https://api.vndb.org/kana/vn", {
+  const response = await fetchWithRetry("https://api.vndb.org/kana/vn", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -885,22 +903,32 @@ async function hydrateMetadataCandidate(game, candidate) {
 function coverCandidateScore(filePath, sourceWeight = 0) {
   const dimensions = imageDimensions(filePath);
   if (!dimensions.width || !dimensions.height) return null;
-  if (dimensions.width < 1080 || dimensions.height < 600) return null;
-  const ratio = dimensions.ratio;
-  if (ratio < 1.18 || ratio > 2.8) return null;
+  const { width, height, ratio } = dimensions;
 
-  const megapixels = (dimensions.width * dimensions.height) / 1_000_000;
+  let tier = null;
+  if (width >= 1080 && height >= 600 && ratio >= 1.18 && ratio <= 2.80) {
+    tier = "landscape";
+  } else if (width >= 400 && height >= 560 && ratio >= 0.50 && ratio < 1.18) {
+    tier = "portrait";
+  } else {
+    return null;
+  }
+
+  const megapixels = (width * height) / 1_000_000;
   const name = path.basename(filePath).toLowerCase();
   let score = sourceWeight + Math.min(80, megapixels * 28);
   if (ratio >= 1.45 && ratio <= 1.95) score += 50;
-  if (dimensions.width >= 1280) score += 28;
-  if (dimensions.width >= 1920) score += 24;
-  if (dimensions.height >= 720) score += 18;
+  if (width >= 1280) score += 28;
+  if (width >= 1920) score += 24;
+  if (height >= 720) score += 18;
   if (/mainvisual|keyvisual|visual|kv|hero|background|wallpaper|ogp|top|main|official/i.test(name)) score += 28;
-  if (/cover|jacket|package|poster|icon|logo|button|thumb|thumbnail|caution|warning|readme|manual|sprite/i.test(name)) score -= 60;
+  // Reduced penalty for portrait (VNDB covers etc.)
+  if (/cover|jacket|package|poster/i.test(name) && tier === "portrait") score -= 12;
+  else if (/cover|jacket|package|poster|icon|logo|button|thumb|thumbnail|caution|warning|readme|manual|sprite/i.test(name)) score -= 60;
   if (/cg|ss|sample|event/i.test(name)) score -= 24;
+  if (tier === "portrait") score -= 40;
 
-  return { width: dimensions.width, height: dimensions.height, score };
+  return { width, height, score };
 }
 
 function urlHintScore(url) {
@@ -960,6 +988,14 @@ function candidateFilePath(game, url, prefix) {
   return path.join(assetDir("cover-candidates"), `${game.id || "candidate"}-${prefix}-${hash}${safeExt}`);
 }
 
+function coverCodeVersion() {
+  try {
+    return fs.statSync(__filename).mtimeMs.toString(36);
+  } catch {
+    return "0";
+  }
+}
+
 function coverCacheKey(game) {
   const value = [
     game.id,
@@ -967,7 +1003,8 @@ function coverCacheKey(game) {
     game.originalTitle,
     game.developer,
     game.installPath,
-    game.executablePath
+    game.executablePath,
+    coverCodeVersion()
   ].filter(Boolean).join("|");
   return crypto.createHash("sha1").update(value || "unknown").digest("hex");
 }
@@ -1001,7 +1038,7 @@ async function downloadCandidate(game, url, source, sourceWeight, reason) {
   if (!fs.existsSync(filePath) || fs.statSync(filePath).size === 0) {
     const response = await fetch(url, {
       headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36" },
-      signal: AbortSignal.timeout(20000)
+      signal: AbortSignal.timeout(30000)
     });
     if (!response.ok) { console.log(`[cover] ${source} download failed: HTTP ${response.status} — ${url.slice(0, 80)}`); return null; }
     fs.writeFileSync(filePath, Buffer.from(await response.arrayBuffer()));
@@ -1049,6 +1086,26 @@ function mergeCoverCandidates(candidateGroups) {
   return Array.from(byPath.values())
     .sort((a, b) => (b.score + coverSourcePriority(b.source)) - (a.score + coverSourcePriority(a.source)) || b.height * b.width - a.height * a.width)
     .slice(0, 24);
+}
+
+async function fetchWithRetry(url, options = {}, retries = 2) {
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const response = await fetch(url, options);
+      if (response.ok) return response;
+      if (response.status >= 500 && attempt < retries) {
+        await new Promise((r) => setTimeout(r, 800 * (attempt + 1) + Math.random() * 400));
+        continue;
+      }
+      return response;
+    } catch (err) {
+      if (attempt < retries) {
+        await new Promise((r) => setTimeout(r, 800 * (attempt + 1) + Math.random() * 400));
+        continue;
+      }
+      throw err;
+    }
+  }
 }
 
 async function searchBangumi(query) {
@@ -1236,9 +1293,9 @@ function lzacgArticlesFromSearch(html, query) {
     const url = match[1];
     if (seen.has(url)) continue;
     const title = stripMarkup(match[2].replace(/<[^>]+>/g, " ").replace(/\s+/g, " "));
-    if (!title || /新人必读|广告|合作|友情链接|TG|群/i.test(title)) continue;
+    if (!title || title.length < 4 || /新人必读|广告|合作|友情链接|TG|群/i.test(title)) continue;
     const score = Math.max(similarity(query, title), similarity(normalizeSearchText(query), normalizeSearchText(title)));
-    if (score < 0.22 && !normalizeSearchText(title).includes(normalizeSearchText(query))) continue;
+    if (score < 0.32) continue;
     seen.add(url);
     articles.push({ url, title, score });
   }
@@ -1249,7 +1306,7 @@ function lzacgArticlesFromSearch(html, query) {
     const title = stripMarkup(match[2]);
     if (!title || /新人必读|广告|合作|友情链接|TG|群/i.test(title)) continue;
     const score = Math.max(similarity(query, title), similarity(normalizeSearchText(query), normalizeSearchText(title)));
-    if (score < 0.22 && !normalizeSearchText(title).includes(normalizeSearchText(query))) continue;
+    if (score < 0.32) continue;
     seen.add(url);
     articles.push({ url, title, score });
   }
@@ -1265,20 +1322,20 @@ function lzacgArticlesFromCategory(html, query) {
     const link = card.match(/href=["'](https:\/\/lzacg\.cc\/\d+)["']/i)?.[1];
     if (!link || seen.has(link)) continue;
     const title = stripMarkup(card.replace(/<[^>]+>/g, " ").replace(/\s+/g, " "));
-    if (!title || /新人必读|广告|合作|友情链接|TG|群/i.test(title)) continue;
+    if (!title || title.length < 4 || /新人必读|广告|合作|友情链接|TG|群/i.test(title)) continue;
     const score = Math.max(similarity(query, title), similarity(normalizeSearchText(query), normalizeSearchText(title)));
-    if (score < 0.2 && !normalizeSearchText(title).includes(normalizeSearchText(query))) continue;
+    if (score < 0.30) continue;
     seen.add(link);
     articles.push({ url: link, title, score });
   }
   return articles;
 }
 
-async function searchLzacgArticles(query, categoryPageLimit = 8) {
+async function searchLzacgArticles(query, categoryPageLimit = 1) {
   const all = [];
   try {
     await limitDomain("https://lzacg.cc/", 3);
-    const response = await fetch(`https://lzacg.cc/?s=${encodeURIComponent(query)}`, {
+    const response = await fetchWithRetry(`https://lzacg.cc/?s=${encodeURIComponent(query)}`, {
       headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36" },
       signal: AbortSignal.timeout(9000)
     });
@@ -1294,7 +1351,7 @@ async function searchLzacgArticles(query, categoryPageLimit = 8) {
   const settled = await Promise.allSettled(
     categoryPages.map(async (url) => {
       await limitDomain(url, 3);
-      const response = await fetch(url, {
+      const response = await fetchWithRetry(url, {
         headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36" },
         signal: AbortSignal.timeout(9000)
       });
@@ -1751,14 +1808,13 @@ async function findVndbScreenshotCandidates(game) {
   }
 
   async function findSteamCandidates(game) {
-    const hasAscii = (s) => /[A-Za-z0-9]/.test(s);
     const queries = rawTitleQueriesFor(game)
-      .filter((q) => q.length >= 3 && hasAscii(q))
-      .slice(0, 6);
+      .filter((q) => q.length >= 3)
+      .slice(0, 8);
     const appMatches = [];
     for (const query of queries) {
       try {
-        const response = await fetch(`https://store.steampowered.com/api/storesearch/?term=${encodeURIComponent(query)}&l=english&cc=us`, {
+        const response = await fetchWithRetry(`https://store.steampowered.com/api/storesearch/?term=${encodeURIComponent(query)}&l=english&cc=us`, {
           headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36" },
           signal: AbortSignal.timeout(7000)
         });
@@ -2161,12 +2217,8 @@ ipcMain.handle("game:launch", async (_event, game) => {
 app.whenReady().then(() => {
   Menu.setApplicationMenu(null);
 
-  // Proxy: route everything through local proxy except Lzacg (blocked by VPN)
-  const proxyPort = process.env.PROXY_PORT || "7897";
-  session.defaultSession.setProxy({
-    proxyRules: `http://127.0.0.1:${proxyPort}`,
-    proxyBypassRules: "lzacg.cc,*.lzacg.cc,ossimg.nyaya.top,*.ossimg.nyaya.top,<local>"
-  }).catch(() => {});
+  // Proxy: only use if PROXY_PORT env var is set
+  configureProxy(process.env.PROXY_PORT);
 
   protocol.handle("local-file", (request) => {
     const url = new URL(request.url);

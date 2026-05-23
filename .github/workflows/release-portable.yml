@@ -1,9 +1,6 @@
 name: Release Portable EXE
 
 on:
-  push:
-    tags:
-      - "v*"
   workflow_dispatch:
 
 jobs:
@@ -28,10 +25,13 @@ jobs:
       - name: Build portable exe
         run: npm run dist:portable
 
-      - name: Upload portable exe to GitHub Release
+      - name: Zip portable exe
+        run: Compress-Archive -Path "release/Gal Launcher.exe" -DestinationPath "release/Gal-Launcher.zip"
+
+      - name: Upload to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            release/Gal Launcher.exe
-          draft: false
+            release/Gal-Launcher.zip
+          draft: true
           prerelease: false

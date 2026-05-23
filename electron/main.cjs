@@ -1651,7 +1651,7 @@ async function findVndbScreenshotCandidates(game) {
     if (item.status !== "fulfilled") continue;
     for (const vn of item.value.results.slice(0, 5)) {
       const confidence = scoreVnCandidate(item.value.query, vn);
-      if (confidence >= 0.72) matches.push({ vn, confidence, query: item.value.query });
+      if (confidence >= 0.58) matches.push({ vn, confidence, query: item.value.query });
     }
   }
 
@@ -1682,7 +1682,7 @@ async function findVndbScreenshotCandidates(game) {
       if (item.status !== "fulfilled") continue;
       for (const vn of item.value.results.slice(0, 3)) {
         const confidence = scoreVnCandidate(item.value.query, vn);
-        if (confidence < 0.76 || !vn.image?.url || seen.has(vn.image.url)) continue;
+        if (confidence < 0.60 || !vn.image?.url || seen.has(vn.image.url)) continue;
         seen.add(vn.image.url);
         downloads.push(downloadCandidate(game, vn.image.url, "VNDB封面", 62 + confidence * 12, `${vn.title || vn.id} / ${vn.id}`));
       }

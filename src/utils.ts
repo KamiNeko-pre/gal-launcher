@@ -72,7 +72,6 @@ export function completeness(game: Game) {
 
 export function getRecentTwoWeeksSeconds(game: Game, nowMs = Date.now()) {
   const sessions = game.sessions ?? [];
-  if (sessions.length === 0) return 0;
   const cutoff = nowMs - 14 * 24 * 60 * 60 * 1000;
   let total = 0;
   for (const session of sessions) {
@@ -80,7 +79,6 @@ export function getRecentTwoWeeksSeconds(game: Game, nowMs = Date.now()) {
       total += session.durationSeconds;
     }
   }
-  // Also count current session if within 2 weeks
   if (game.currentSessionStartedAt) {
     const startedMs = new Date(game.currentSessionStartedAt).getTime();
     if (Number.isFinite(startedMs) && startedMs >= cutoff) {

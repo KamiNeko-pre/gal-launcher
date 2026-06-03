@@ -93,6 +93,38 @@ function dataPath() {
   return path.join(dir, "games.json");
 }
 
+function journalFile() {
+  return path.join(app.getPath("userData"), "library", "play-session-journal.json");
+}
+
+function readJournal() {
+  try {
+    return JSON.parse(fs.readFileSync(journalFile(), "utf8"));
+  } catch {
+    return {};
+  }
+}
+
+function journalAdd(gameId, sessionId, startedAt, startedMs) {
+  const journal = readJournal();
+  journal[sessionId] = { gameId, sessionId, startedAt, startedMs };
+  writeJsonFile(journalFile(), journal);
+}
+
+function journalRemove(sessionId) {
+  const journal = readJournal();
+  delete journal[sessionId];
+  writeJsonFile(journalFile(), journal);
+}
+
+function journalSnapshot(sessionId, seconds) {
+  const journal = readJournal();
+  if (journal[sessionId]) {
+    journal[sessionId].snapshotSeconds = seconds;
+    writeJsonFile(journalFile(), journal);
+  }
+}
+
 function readLibrary() {
   try {
     return JSON.parse(fs.readFileSync(dataPath(), "utf8"));
@@ -179,8 +211,11 @@ function runningProcessIdsUnder(root) {
 async function normalizeLibraryForRuntime(games) {
   if (!Array.isArray(games)) return [];
   const nowMs = Date.now();
+  const journal = readJournal();
   let changed = false;
+  let journalChanged = false;
   const normalized = [];
+  const MAX_RECOVERY_SECONDS = 24 * 3600; // 24-hour cap for crash recovery
 
   for (const game of games) {
     const next = {
@@ -194,20 +229,52 @@ async function normalizeLibraryForRuntime(games) {
     if (next.currentSessionStartedAt) {
       const startedMs = new Date(next.currentSessionStartedAt).getTime();
       if (!Number.isFinite(startedMs)) {
+        // Corrupt timestamp — clear session fields
         next.currentSessionId = null;
         next.currentSessionStartedAt = null;
         changed = true;
       } else {
+        // Ensure sessionId exists
         if (!next.currentSessionId) {
           next.currentSessionId = crypto.randomUUID();
           changed = true;
         }
-        const pids = await runningProcessIdsUnder(monitorRootForGame(next));
-        if (pids.length > 0) {
-          startPlaySession(next, next.currentSessionId, next.currentSessionStartedAt, startedMs);
-          monitorPlaySessionUntilQuiet(next.currentSessionId, 5000);
+
+        // Only recover if a matching journal entry proves this was a real session
+        const journalEntry = journal[next.currentSessionId];
+        if (journalEntry) {
+          const pids = await runningProcessIdsUnder(monitorRootForGame(next));
+          if (pids.length > 0) {
+            // Game still running — resume monitoring
+            startPlaySession(next, next.currentSessionId, next.currentSessionStartedAt, null, startedMs);
+          } else {
+            // Crashed: prefer exact snapshot from before-quit, fall back to wall clock with 24h cap
+            let recoveryDuration;
+            if (typeof journalEntry.snapshotSeconds === "number" && journalEntry.snapshotSeconds >= 0) {
+              recoveryDuration = Math.min(journalEntry.snapshotSeconds, MAX_RECOVERY_SECONDS);
+            } else {
+              const computedSeconds = Math.round((nowMs - startedMs) / 1000);
+              recoveryDuration = Math.max(0, Math.min(computedSeconds, MAX_RECOVERY_SECONDS));
+            }
+            next.totalPlaySeconds += recoveryDuration;
+            const sessions = Array.isArray(next.sessions) ? next.sessions : [];
+            sessions.push({
+              sessionId: next.currentSessionId,
+              startedAt: next.currentSessionStartedAt,
+              endedAt: new Date(nowMs).toISOString(),
+              durationSeconds: recoveryDuration
+            });
+            next.sessions = sessions.slice(-50);
+            next.currentSessionId = null;
+            next.currentSessionStartedAt = null;
+            changed = true;
+
+            // Clean up journal entry
+            delete journal[next.currentSessionId];
+            journalChanged = true;
+          }
         } else {
-          next.totalPlaySeconds += Math.max(0, Math.round((nowMs - startedMs) / 1000));
+          // No journal entry — orphan session fields, just clear them
           next.currentSessionId = null;
           next.currentSessionStartedAt = null;
           changed = true;
@@ -218,7 +285,16 @@ async function normalizeLibraryForRuntime(games) {
     normalized.push(next);
   }
 
+  // Clean up stale journal entries that don't match any game
+  for (const sid of Object.keys(journal)) {
+    if (!normalized.some((g) => g.currentSessionId === sid)) {
+      delete journal[sid];
+      journalChanged = true;
+    }
+  }
+
   if (changed) writeLibrary(normalized);
+  if (journalChanged) writeJsonFile(journalFile(), journal);
   return normalized;
 }
 
@@ -2112,19 +2188,104 @@ ipcMain.handle("image:readDataUrl", async (_event, imagePath) => {
   return `data:${mime};base64,${data}`;
 });
 
-function startPlaySession(game, sessionId, startedAt, startedMs = Date.now()) {
+function startPlaySession(game, sessionId, startedAt, trackedPids, startedMs = Date.now()) {
   const monitorRoot = monitorRootForGame(game);
+  const pids = Array.isArray(trackedPids) ? trackedPids : (trackedPids ? [trackedPids] : []);
   const session = {
     gameId: game.id,
     sessionId,
     startedAt,
     startedMs,
     monitorRoot,
+    trackedPids: pids,
+    childPid: pids[0] ?? null,
     emptyChecks: 0,
-    monitorTimer: null
+    monitorTimer: null,
+    watchdogTimer: null
   };
   activePlaySessions.set(sessionId, session);
+
+  // Write session journal for crash recovery
+  journalAdd(game.id, sessionId, startedAt, startedMs);
+
+  // Start monitoring immediately; give the game time to start its process tree
+  scheduleMonitorCheck(session, pids.length > 0 ? 6000 : 10000);
+
+  // Watchdog: every 60s, verify the polling loop hasn't stalled
+  session.watchdogTimer = setInterval(() => {
+    const s = activePlaySessions.get(sessionId);
+    if (!s) return;
+    if (!s.monitorTimer) {
+      scheduleMonitorCheck(s, 0);
+    }
+  }, 60000);
+
   return session;
+}
+
+function isPidAlive(pid) {
+  return new Promise((resolve) => {
+    execFile("tasklist", ["/FI", `PID eq ${pid}`, "/NH"], { windowsHide: true, timeout: 3000 }, (err, stdout) => {
+      if (err) { resolve(false); return; }
+      resolve(String(stdout).includes(`${pid}`));
+    });
+  });
+}
+
+function getChildPids(parentPid) {
+  return new Promise((resolve) => {
+    execFile(
+      "wmic",
+      ["process", "where", `ParentProcessId=${parentPid}`, "get", "ProcessId", "/format:csv"],
+      { windowsHide: true, timeout: 4000 },
+      (err, stdout) => {
+        if (err) { resolve([]); return; }
+        const lines = String(stdout).split(/\r?\n/).filter(Boolean).slice(1);
+        const pids = lines
+          .map((line) => {
+            const parts = line.split(",");
+            return Number(parts[parts.length - 1]?.trim());
+          })
+          .filter((pid) => Number.isFinite(pid) && pid > 0);
+        resolve(pids);
+      }
+    );
+  });
+}
+
+async function scheduleMonitorCheck(session, delay) {
+  if (session.monitorTimer) clearTimeout(session.monitorTimer);
+  session.monitorTimer = setTimeout(async () => {
+    const current = activePlaySessions.get(session.sessionId);
+    if (!current) return;
+
+    let anyAlive = false;
+
+    // Check all tracked PIDs (child process tree) first — narrowest detection
+    if (current.trackedPids && current.trackedPids.length > 0) {
+      const results = await Promise.all(current.trackedPids.map((pid) => isPidAlive(pid)));
+      anyAlive = results.some(Boolean);
+    }
+
+    // Only fall back to broad directory scan when we have no tracked PIDs
+    if (!anyAlive && current.trackedPids.length === 0) {
+      const pids = await runningProcessIdsUnder(current.monitorRoot);
+      anyAlive = pids.length > 0;
+    }
+
+    if (anyAlive) {
+      current.emptyChecks = 0;
+      scheduleMonitorCheck(current, 4000);
+      return;
+    }
+
+    current.emptyChecks = (current.emptyChecks || 0) + 1;
+    if (current.emptyChecks >= 2) {
+      finishPlaySession(current.sessionId);
+    } else {
+      scheduleMonitorCheck(current, 2000);
+    }
+  }, delay);
 }
 
 function finishPlaySession(sessionId) {
@@ -2132,14 +2293,13 @@ function finishPlaySession(sessionId) {
   if (!current) return;
   activePlaySessions.delete(sessionId);
   if (current.monitorTimer) clearTimeout(current.monitorTimer);
+  if (current.watchdogTimer) clearInterval(current.watchdogTimer);
+
+  // Clear session journal on clean finish
+  journalRemove(sessionId);
   const endedMs = Date.now();
-  const payload = {
-    gameId: current.gameId,
-    sessionId: current.sessionId,
-    startedAt: current.startedAt,
-    endedAt: new Date(endedMs).toISOString(),
-    durationSeconds: Math.max(0, Math.round((endedMs - current.startedMs) / 1000))
-  };
+  const endedAt = new Date(endedMs).toISOString();
+  const durationSeconds = Math.max(0, Math.round((endedMs - current.startedMs) / 1000));
 
   const games = readLibrary();
   const game = games.find((g) => g.id === current.gameId);
@@ -2148,41 +2308,32 @@ function finishPlaySession(sessionId) {
     sessions.push({
       sessionId: current.sessionId,
       startedAt: current.startedAt,
-      endedAt: payload.endedAt,
-      durationSeconds: payload.durationSeconds
+      endedAt,
+      durationSeconds
     });
     game.sessions = sessions.slice(-50);
+    game.totalPlaySeconds = (game.totalPlaySeconds ?? 0) + durationSeconds;
+    game.currentSessionId = null;
+    game.currentSessionStartedAt = null;
+    game.lastPlayedAt = endedAt;
   }
   writeLibrary(games);
+
+  const payload = {
+    gameId: current.gameId,
+    sessionId: current.sessionId,
+    startedAt: current.startedAt,
+    endedAt,
+    durationSeconds,
+    totalPlaySeconds: game ? (game.totalPlaySeconds ?? 0) : 0,
+    sessions: game ? (Array.isArray(game.sessions) ? game.sessions : []).slice(-50) : []
+  };
 
   if (mainWindow && !mainWindow.isDestroyed()) {
     mainWindow.webContents.send("game:sessionEnded", payload);
   }
 }
 
-function monitorPlaySessionUntilQuiet(sessionId, initialDelayMs = 6000) {
-  const schedule = (delay) => {
-    const current = activePlaySessions.get(sessionId);
-    if (!current) return;
-    current.monitorTimer = setTimeout(async () => {
-      const latest = activePlaySessions.get(sessionId);
-      if (!latest) return;
-      const pids = await runningProcessIdsUnder(latest.monitorRoot);
-      if (pids.length > 0) {
-        latest.emptyChecks = 0;
-        schedule(5000);
-        return;
-      }
-      latest.emptyChecks = (latest.emptyChecks || 0) + 1;
-      if (latest.emptyChecks >= 2) {
-        finishPlaySession(sessionId);
-      } else {
-        schedule(3500);
-      }
-    }, delay);
-  };
-  schedule(initialDelayMs);
-}
 
 ipcMain.handle("game:launch", async (_event, game) => {
   if (!game?.executablePath || !fs.existsSync(game.executablePath)) {
@@ -2194,8 +2345,7 @@ ipcMain.handle("game:launch", async (_event, game) => {
   const ext = path.extname(game.executablePath).toLowerCase();
   if (ext === ".lnk") {
     await shell.openPath(game.executablePath);
-    startPlaySession(game, sessionId, startedAt);
-    monitorPlaySessionUntilQuiet(sessionId, 10000);
+    startPlaySession(game, sessionId, startedAt, null);
     return { launched: true, sessionId, startedAt };
   }
 
@@ -2207,9 +2357,31 @@ ipcMain.handle("game:launch", async (_event, game) => {
     windowsHide: false
   });
 
-  startPlaySession(game, sessionId, startedAt);
-  child.once("exit", () => monitorPlaySessionUntilQuiet(sessionId, 4500));
-  child.once("error", () => finishPlaySession(sessionId));
+  startPlaySession(game, sessionId, startedAt, [child.pid]);
+
+  // Capture child process tree PIDs after a short delay to let the tree form
+  setTimeout(async () => {
+    const s = activePlaySessions.get(sessionId);
+    if (!s) return;
+    try {
+      const childPids = await getChildPids(child.pid);
+      if (childPids.length > 0) {
+        s.trackedPids = [child.pid, ...childPids];
+        s.childPid = child.pid;
+      }
+    } catch {
+      // Silent — keep the original single PID tracking
+    }
+  }, 2000);
+
+  child.once("exit", () => {
+    const s = activePlaySessions.get(sessionId);
+    if (s) scheduleMonitorCheck(s, 500);
+  });
+  child.once("error", () => {
+    const s = activePlaySessions.get(sessionId);
+    if (s) scheduleMonitorCheck(s, 500);
+  });
   child.unref();
   return { launched: true, sessionId, startedAt };
 });
@@ -2228,6 +2400,15 @@ app.whenReady().then(() => {
     return net.fetch(pathToFileURL(filePath).toString());
   });
   createWindow();
+});
+
+app.on("before-quit", () => {
+  // Snapshot all active sessions so crash recovery uses exact elapsed time,
+  // not wall-clock difference (critical for system shutdown without closing app)
+  for (const [sid, s] of activePlaySessions) {
+    const elapsed = Math.round((Date.now() - s.startedMs) / 1000);
+    journalSnapshot(sid, Math.max(0, elapsed));
+  }
 });
 
 app.on("window-all-closed", () => {

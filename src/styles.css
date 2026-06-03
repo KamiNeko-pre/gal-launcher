@@ -5,11 +5,12 @@
 /* --- CSS Reset & Variables --- */
 :root {
   /* Color Tokens — cool blue palette */
+  --glass-base: 14, 20, 28;
   --bg-deep: #0a0e14;
   --bg-warm: #0e1218;
-  --glass-bg: rgba(14, 20, 28, 0.22);
-  --glass-bg-strong: rgba(14, 20, 28, 0.32);
-  --glass-bg-light: rgba(14, 20, 28, 0.12);
+  --glass-bg: rgba(var(--glass-base), 0.22);
+  --glass-bg-strong: rgba(var(--glass-base), 0.32);
+  --glass-bg-light: rgba(var(--glass-base), 0.12);
   --glass-border: rgba(200, 215, 235, 0.1);
   --glass-border-strong: rgba(200, 215, 235, 0.18);
   --accent: #7eb8da;
@@ -182,6 +183,7 @@ button {
   inset: 0;
   z-index: -2;
   background:
+    linear-gradient(90deg, rgba(0, 0, 0, 0.07) 0%, transparent 14%),
     radial-gradient(ellipse at 55% 16%, var(--theme-glow-a), transparent 55%),
     radial-gradient(ellipse at 30% 26%, var(--theme-glow-b), transparent 50%);
   pointer-events: none;
@@ -207,12 +209,15 @@ button {
   align-items: center;
   gap: 12px;
   padding: 28px 0 20px;
-  background: transparent;
-  transition: background var(--duration-normal) var(--ease-out);
+  background: linear-gradient(90deg, rgba(10, 14, 20, 0.18) 0%, rgba(10, 14, 20, 0.06) 70%, transparent 100%);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: background var(--duration-normal) var(--ease-out),
+              backdrop-filter var(--duration-normal) var(--ease-out);
 }
 
 .rail:hover {
-  background: linear-gradient(90deg, rgba(14, 20, 28, 0.16), transparent 70%);
+  background: linear-gradient(90deg, rgba(10, 14, 20, 0.28), rgba(10, 14, 20, 0.10) 70%, transparent 100%);
 }
 
 .rail-logo {
@@ -237,11 +242,13 @@ button {
 .rail-button {
   display: grid;
   place-items: center;
-  width: 38px;
-  height: 38px;
+  width: 40px;
+  height: 40px;
   border-radius: 11px;
   color: var(--text-secondary);
-  background: transparent;
+  background: rgba(var(--glass-base), 0.10);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.25));
   transition: color var(--duration-fast) var(--ease-out),
               background var(--duration-fast) var(--ease-out),
               transform var(--duration-fast) var(--ease-out),
@@ -251,7 +258,7 @@ button {
 
 .rail-button:hover {
   color: var(--text-primary);
-  background: rgba(200, 218, 238, 0.08);
+  background: rgba(200, 218, 238, 0.16);
   transform: translateY(-1px);
 }
 
@@ -1164,39 +1171,16 @@ button {
 
 .theme-preview {
   grid-row: span 2;
-  position: relative;
-  display: grid;
   width: 100px;
   height: 72px;
   overflow: hidden;
   border-radius: 12px;
   background:
-    radial-gradient(circle at 78% 18%, var(--preview-glow-b, rgba(140, 195, 230, 0.3)), transparent 38%),
-    radial-gradient(circle at 18% 78%, var(--preview-glow-a, rgba(140, 195, 230, 0.3)), transparent 42%),
-    linear-gradient(135deg, rgba(20, 38, 52, 0.9), rgba(14, 28, 40, 0.9));
+    linear-gradient(180deg, var(--preview-accent, #7eb8da) 0%, var(--preview-accent, #7eb8da) 22%, transparent 22%),
+    linear-gradient(180deg, rgba(var(--preview-glass, 14,20,28), 0.48), rgba(var(--preview-glass, 14,20,28), 0.82)),
+    radial-gradient(ellipse at 70% 30%, rgba(255,255,255,0.08), transparent 55%);
   border: 1px solid rgba(200, 215, 235, 0.18);
-}
-
-.theme-preview i {
-  position: absolute;
-  left: 8px;
-  right: 8px;
-  bottom: 8px;
-  height: 18px;
-  border-radius: 999px;
-  background: rgba(200, 215, 235, 0.14);
-  border: 1px solid rgba(200, 215, 235, 0.16);
-}
-
-.theme-preview b {
-  position: absolute;
-  right: 10px;
-  bottom: 12px;
-  width: 18px;
-  height: 8px;
-  border-radius: 999px;
-  background: var(--preview-accent, #c9a96e);
-  box-shadow: 0 0 14px var(--preview-accent, #c9a96e);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
 }
 
 .theme-card strong {
@@ -1591,7 +1575,7 @@ button {
   padding: 6px;
   border: 1px solid var(--glass-border-strong);
   border-radius: 10px;
-  background: rgba(14, 20, 28, 0.92);
+  background: rgba(var(--glass-base), 0.92);
   backdrop-filter: blur(16px);
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
   display: grid;

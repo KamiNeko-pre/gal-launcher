@@ -112,7 +112,8 @@ function App() {
           if (game.currentSessionId && game.currentSessionId !== event.sessionId) return game;
           return {
             ...game,
-            totalPlaySeconds: (game.totalPlaySeconds ?? 0) + event.durationSeconds,
+            totalPlaySeconds: event.totalPlaySeconds ?? game.totalPlaySeconds ?? 0,
+            sessions: event.sessions ?? game.sessions,
             currentSessionId: null,
             currentSessionStartedAt: null,
             lastPlayedAt: event.endedAt,
@@ -487,15 +488,11 @@ function App() {
       .map(([tag]) => tag);
   }, [games]);
   const themeStyle = {
-    "--glass-alpha": themeSettings.glassAlpha,
+    "--glass-base": themeSettings.glassBase,
     "--glass-blur": `${themeSettings.blur}px`,
-    "--card-scale": themeSettings.cardScale,
     "--accent-color": themeSettings.accent,
-    "--overlay-left": themeSettings.overlayLeft,
-    "--overlay-right": themeSettings.overlayRight,
-    "--overlay-bottom": themeSettings.overlayBottom,
-    "--theme-glow-a": themeSettings.glowA,
-    "--theme-glow-b": themeSettings.glowB
+    "--accent-glow": themeSettings.accentGlow,
+    "--accent-soft": themeSettings.accentSoft
   } as React.CSSProperties;
 
   return (
@@ -876,12 +873,8 @@ function App() {
                 >
                   <span className="theme-preview" style={{
                     "--preview-accent": preset.accent,
-                    "--preview-glow-a": preset.glowA,
-                    "--preview-glow-b": preset.glowB
-                  } as React.CSSProperties}>
-                    <i />
-                    <b />
-                  </span>
+                    "--preview-glass": preset.glassBase
+                  } as React.CSSProperties} />
                   <strong>{preset.name}</strong>
                   <small>{preset.description}</small>
                 </button>

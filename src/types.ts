@@ -49,6 +49,8 @@ export interface PlaySessionEndedEvent {
   startedAt: string;
   endedAt: string;
   durationSeconds: number;
+  totalPlaySeconds?: number;
+  sessions?: PlaySession[];
 }
 
 export interface PickedLaunchFile {

@@ -2,6 +2,11 @@ name: Release Portable EXE
 
 on:
   workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to release (e.g. v0.2.3)'
+        required: true
+        type: string
 
 jobs:
   release:
@@ -12,6 +17,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag }}
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -31,6 +38,7 @@ jobs:
       - name: Upload to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ inputs.tag }}
           files: |
             release/Gal-Launcher.zip
           draft: true

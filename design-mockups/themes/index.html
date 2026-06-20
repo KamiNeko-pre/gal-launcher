@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>Gal Launcher . Theme mockups</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{min-height:100%}
+body{
+  background:#0a0a10;color:#f3eee6;
+  font-family:"Inter",sans-serif;
+  padding:48px 56px 80px;
+}
+header{display:flex;align-items:baseline;gap:18px;padding-bottom:18px;border-bottom:1px solid rgba(243,238,230,.18);margin-bottom:32px}
+header h1{font-family:"Instrument Serif",serif;font-weight:400;font-size:42px;letter-spacing:-.01em}
+header em{font-style:italic;color:rgba(243,238,230,.5);font-family:"Instrument Serif",serif;font-size:18px}
+header .meta{margin-left:auto;font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:.22em;color:rgba(243,238,230,.5);text-transform:uppercase}
+
+.intro{font-family:"Instrument Serif",serif;font-style:italic;font-weight:300;font-size:21px;color:rgba(243,238,230,.78);max-width:62em;margin-bottom:36px;line-height:1.5}
+
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(360px,1fr));gap:22px}
+
+.tile{
+  position:relative;display:flex;flex-direction:column;
+  border:1px solid rgba(243,238,230,.18);border-radius:20px;
+  overflow:hidden;background:#11111a;
+  transition:.25s ease;text-decoration:none;color:inherit;
+}
+.tile:hover{transform:translateY(-4px);border-color:rgba(243,238,230,.45);box-shadow:0 30px 60px rgba(0,0,0,.5)}
+
+.preview{position:relative;aspect-ratio:16/10;overflow:hidden}
+.preview iframe{position:absolute;left:0;top:0;width:200%;height:200%;border:0;pointer-events:none;transform:scale(.5);transform-origin:0 0}
+
+.body{padding:18px 22px 22px}
+.body .num{font-family:"JetBrains Mono",monospace;font-size:10px;letter-spacing:.28em;color:rgba(243,238,230,.5);text-transform:uppercase}
+.body h2{font-family:"Instrument Serif",serif;font-weight:400;font-size:30px;letter-spacing:-.01em;margin:6px 0 6px}
+.body p{font-family:"Inter",sans-serif;font-size:13px;line-height:1.55;color:rgba(243,238,230,.66);margin-bottom:14px}
+.body .palette{display:flex;gap:8px;margin-bottom:14px}
+.body .palette span{width:18px;height:18px;border-radius:50%;border:1px solid rgba(0,0,0,.3)}
+.body .tags{display:flex;flex-wrap:wrap;gap:6px}
+.body .tags li{list-style:none;font-family:"JetBrains Mono",monospace;font-size:9px;letter-spacing:.2em;text-transform:uppercase;padding:4px 8px;border:1px solid rgba(243,238,230,.18);color:rgba(243,238,230,.7)}
+
+.cta{margin-top:14px;display:flex;justify-content:space-between;align-items:center}
+.cta strong{font-family:"Instrument Serif",serif;font-style:italic;font-size:16px;color:#f3eee6}
+.cta em{font-family:"JetBrains Mono",monospace;font-size:10px;letter-spacing:.22em;color:rgba(243,238,230,.5);text-transform:uppercase}
+
+footer{margin-top:48px;padding-top:18px;border-top:1px solid rgba(243,238,230,.12);font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:.22em;color:rgba(243,238,230,.42);text-transform:uppercase}
+</style>
+</head>
+<body>
+<header>
+  <h1>Gal Launcher <em>. theme mockups</em></h1>
+  <span class="meta">6 directions . click to open full screen</span>
+</header>
+
+<p class="intro">这一轮重点是：每个主题不仅换配色，连<strong style="color:#f3eee6;font-style:normal">布局骨架和"切换游戏"的交互方式都不一样</strong>——杂志翻页、游戏机卡带槽、台面相册条、封面轮播、画廊横向漫游。功能一个不少：7 个功能入口（全部 / 收藏柜 / 进行中 / 导出 / 恢复 / 主题 / 添加）+ 搜索 + 总时长/总数/进行中/已通关统计 + 继续游戏 + 标签筛选 + 启动键（每套的视觉焦点）+ 资料键 + 库列表，只是化身成了各主题的语言。Cinema 是当前线上版本，保持原状不动；其余 5 套是新骨架方向。点开看大图后告诉我留哪几个、砍哪几个、要不要补方向。</p>
+
+<div class="grid">
+
+  <a class="tile" href="cinema.html" target="_blank">
+    <div class="preview"><iframe src="cinema.html"></iframe></div>
+    <div class="body">
+      <div class="num">N&deg; 01</div>
+      <h2>Cinema <em style="font-family:'Instrument Serif',serif;font-style:italic;color:#74ff8a;font-size:13px;letter-spacing:.18em">. 当前线上</em></h2>
+      <p>电影感全屏剧照。雾蓝粉白光晕，衬线大字 + Cinzel 标，胶片底栏。当前本机版本，不需要任何改动。</p>
+      <div class="palette"><span style="background:#0c0f16"></span><span style="background:#fff7f8"></span><span style="background:#e89aa8"></span><span style="background:#9ed0ea"></span></div>
+      <ul class="tags"><li>fullscreen</li><li>serif display</li><li>mist blue</li><li>cherry rose</li></ul>
+      <div class="cta"><strong>"a film still you can launch"</strong><em>open &rarr;</em></div>
+    </div>
+  </a>
+
+  <a class="tile" href="editorial.html" target="_blank">
+    <div class="preview"><iframe src="editorial.html"></iframe></div>
+    <div class="body">
+      <div class="num">N&deg; 02</div>
+      <h2>Editorial</h2>
+      <p><strong style="color:#f3eee6;font-style:normal">骨架：杂志对开内页。</strong>刊头工具栏放 7 功能键（带文字标注），左页大图 + 右页双栏首字下沉正文，底部翻页目录条切换游戏。启动键 = 朱红大按钮带偏移阴影。</p>
+      <div class="palette"><span style="background:#f3ead8"></span><span style="background:#1d1410"></span><span style="background:#b8442a"></span><span style="background:#1b3a5a"></span></div>
+      <ul class="tags"><li>magazine</li><li>warm cream</li><li>fraunces</li><li>column grid</li></ul>
+      <div class="cta"><strong>"my library, on paper"</strong><em>open &rarr;</em></div>
+    </div>
+  </a>
+
+  <a class="tile" href="arcade.html" target="_blank">
+    <div class="preview"><iframe src="arcade.html"></iframe></div>
+    <div class="body">
+      <div class="num">N&deg; 03</div>
+      <h2>Arcade</h2>
+      <p><strong style="color:#f3eee6;font-style:normal">骨架：游戏机整机外壳。</strong>左控制柱方向键 + 系统钮，中央 CRT 屏放海报/HUD/血条，右控制柱投币键=添加、A 键=资料、START 大圆钮=启动（带脉冲）。底部卡带槽选游戏。</p>
+      <div class="palette"><span style="background:#06070b"></span><span style="background:#ff2d8c"></span><span style="background:#5cf3ff"></span><span style="background:#74ff8a"></span></div>
+      <ul class="tags"><li>crt</li><li>neon</li><li>press start 2p</li><li>scanlines</li></ul>
+      <div class="cta"><strong>"insert coin to continue"</strong><em>open &rarr;</em></div>
+    </div>
+  </a>
+
+  <a class="tile" href="atelier.html" target="_blank">
+    <div class="preview"><iframe src="atelier.html"></iframe></div>
+    <div class="body">
+      <div class="num">N&deg; 04</div>
+      <h2>Atelier</h2>
+      <p><strong style="color:#f3eee6;font-style:normal">骨架：俯视拼贴台面。</strong>顶部夹子横杆放功能夹片，中央大拍立得是当前作品，便利贴/票根/回形针承载统计与功能，底部散落小照片相册条切换游戏。启动键 = 红色橡皮图章。</p>
+      <div class="palette"><span style="background:#f4ecd8"></span><span style="background:#2a2018"></span><span style="background:#e89aa8"></span><span style="background:#9ed0ea"></span></div>
+      <ul class="tags"><li>handwritten</li><li>polaroid</li><li>washi tape</li><li>cream paper</li></ul>
+      <div class="cta"><strong>"my own visual journal"</strong><em>open &rarr;</em></div>
+    </div>
+  </a>
+
+  <a class="tile" href="monolux.html" target="_blank">
+    <div class="preview"><iframe src="monolux.html"></iframe></div>
+    <div class="body">
+      <div class="num">N&deg; 05</div>
+      <h2>Mono Lux</h2>
+      <p><strong style="color:#f3eee6;font-style:normal">骨架：美术馆长廊。</strong>居中聚光主画作 + 两侧透视墙画，左右箭头横向漫游切换。右侧铭牌放规格与说明，底部馆藏目录是库。启动键 = 银箔大铭板，全厅唯一高反差焦点。</p>
+      <div class="palette"><span style="background:#070708"></span><span style="background:#e8e4dc"></span><span style="background:#bfb9ae"></span><span style="background:#7d786e"></span></div>
+      <ul class="tags"><li>silver foil</li><li>cormorant</li><li>gallery walk</li><li>spotlight</li></ul>
+      <div class="cta"><strong>"less, but with intent"</strong><em>open &rarr;</em></div>
+    </div>
+  </a>
+
+  <a class="tile" href="aurora.html" target="_blank">
+    <div class="preview"><iframe src="aurora.html"></iframe></div>
+    <div class="body">
+      <div class="num">N&deg; 06</div>
+      <h2>Aurora</h2>
+      <p><strong style="color:#f3eee6;font-style:normal">骨架：沉浸式封面轮播。</strong>顶部悬浮玻璃圆钮导航 7 功能键，中央封面轮播带左右 ghost-cover + 箭头 + 圆点，两侧玻璃卡放统计与续读队列，底部缩略胶卷是库。启动键 = 居中发光大胶囊。雾蓝樱粉乳白梦幻浅底。</p>
+      <div class="palette"><span style="background:#e6f1f9"></span><span style="background:#9ed0ea"></span><span style="background:#f5a8c1"></span><span style="background:#fff7fb"></span></div>
+      <ul class="tags"><li>glass</li><li>cover carousel</li><li>instrument serif</li><li>dreamy pastel</li></ul>
+      <div class="cta"><strong>"made for late nights"</strong><em>open &rarr;</em></div>
+    </div>
+  </a>
+
+</div>
+
+<footer>theme directions . prepared for review . pick what to keep, what to drop</footer>
+</body>
+</html>

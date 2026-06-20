@@ -1,0 +1,197 @@
+/* EDITORIAL --- 真正的杂志: 对开内页 + 翻页目录, 功能键化进刊头工具栏与页脚 */
+:root{
+  --paper:#f3ead8;
+  --paper-2:#ebdfc6;
+  --paper-3:#e3d5b8;
+  --ink:#1d1410;
+  --ink-soft:#5a4a40;
+  --rule:#1d1410;
+  --accent:#b8442a;
+  --accent-2:#1b3a5a;
+}
+
+html,body{height:100%}
+body{
+  background:#cdbf9f;
+  color:var(--ink);
+  font-family:"Fraunces","Noto Serif JP",serif;
+  overflow:hidden;
+  display:flex;flex-direction:column;
+}
+
+.paper{
+  position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:
+    radial-gradient(1200px 700px at 18% 12%,rgba(184,68,42,.05),transparent 60%),
+    radial-gradient(900px 600px at 82% 88%,rgba(27,58,90,.06),transparent 60%);
+}
+
+/* ---- 刊头 ---- */
+.masthead{
+  position:relative;z-index:3;
+  display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:28px;
+  padding:16px 40px 14px;
+  background:var(--paper);
+  border-bottom:3px double var(--rule);
+}
+.brand{display:flex;align-items:center;gap:14px}
+.brand .mark{
+  width:46px;height:46px;display:grid;place-items:center;
+  background:var(--ink);color:var(--paper);
+  font-family:"Fraunces",serif;font-weight:900;font-size:17px;letter-spacing:-.04em;
+}
+.brand .info strong{display:block;font-family:"Fraunces",serif;font-weight:900;font-size:21px;letter-spacing:-.025em;line-height:1}
+.brand .info em{display:block;margin-top:3px;font-style:italic;font-weight:500;font-size:11px;color:var(--ink-soft);letter-spacing:.04em}
+
+.search{
+  justify-self:center;display:flex;align-items:center;gap:10px;
+  width:min(420px,100%);padding:9px 14px;
+  border:1.5px solid var(--ink);background:rgba(255,255,255,.45);
+}
+.search i{font-style:normal;font-family:"Inter Tight",sans-serif;font-size:11px;letter-spacing:.2em;color:var(--ink-soft);font-weight:600}
+.search input{flex:1;border:none;outline:none;background:transparent;font-family:"Fraunces",serif;font-style:italic;font-size:15px;color:var(--ink-soft)}
+.search .kbd{font-family:"JetBrains Mono",monospace;font-size:11px;padding:2px 6px;border:1px solid var(--ink);background:var(--paper-2)}
+
+/* 工具栏 = 7功能键, 编辑台图标钮 + 文字标注 */
+.toolbar{display:flex;align-items:flex-end;gap:6px}
+.tool{
+  display:flex;flex-direction:column;align-items:center;gap:3px;
+  min-width:48px;min-height:48px;padding:6px 8px;
+  background:transparent;border:1px solid transparent;
+}
+.tool b{
+  font-family:"Fraunces",serif;font-weight:700;font-size:16px;line-height:1;
+  width:30px;height:26px;display:grid;place-items:center;color:var(--ink);
+}
+.tool span{font-family:"Inter Tight",sans-serif;font-size:9px;letter-spacing:.12em;color:var(--ink-soft)}
+.tool:hover{background:var(--paper-2);border-color:var(--rule)}
+.tool.on{background:var(--ink)}
+.tool.on b,.tool.on span{color:var(--paper)}
+.tool.add b{background:var(--accent);color:var(--paper);font-size:20px;border-radius:2px}
+.tool.add span{color:var(--accent);font-weight:700}
+.tool.add:hover{background:var(--paper-2)}
+.tsep{width:1px;align-self:stretch;background:rgba(29,20,16,.25);margin:6px 4px}
+
+/* ---- 发行信息栏 ---- */
+.ribbon{
+  position:relative;z-index:2;
+  display:flex;align-items:center;justify-content:space-between;gap:24px;
+  padding:9px 40px;background:var(--paper-2);
+  border-bottom:1px solid var(--rule);
+}
+.circ{display:flex;gap:22px}
+.circ .ci{font-family:"Inter Tight",sans-serif;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-soft);display:flex;align-items:baseline;gap:6px}
+.circ .ci b{font-family:"Fraunces",serif;font-style:italic;font-weight:800;font-size:16px;color:var(--ink);letter-spacing:0;text-transform:none}
+.resume{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.resume .rl{font-family:"Inter Tight",sans-serif;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--ink-soft)}
+.rchip{padding:5px 12px;border:1px solid var(--ink);background:transparent;font-family:"Fraunces",serif;font-style:italic;font-weight:500;font-size:13px;color:var(--ink)}
+.rchip:hover{background:var(--paper-3)}
+.rchip.on{background:var(--ink);color:var(--paper)}
+
+.topics{
+  position:relative;z-index:2;
+  display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+  padding:8px 40px;background:var(--paper);border-bottom:1px solid var(--rule);
+}
+.topics .topl{font-family:"Inter Tight",sans-serif;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--ink-soft);margin-right:4px}
+.topic{padding:4px 12px;border:1px solid rgba(29,20,16,.5);background:transparent;font-family:"Inter Tight",sans-serif;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink);font-weight:500}
+.topic:hover{background:var(--paper-2)}
+.topic.on{background:var(--accent);color:var(--paper);border-color:var(--accent)}
+
+/* ---- 对开内页 ---- */
+.spread{
+  position:relative;z-index:1;flex:1;min-height:0;
+  display:grid;grid-template-columns:1fr 1fr;
+  margin:18px 40px;
+  background:var(--paper);
+  box-shadow:0 30px 70px rgba(0,0,0,.32);
+}
+.binding{
+  position:absolute;left:50%;top:0;bottom:0;width:40px;transform:translateX(-50%);z-index:2;pointer-events:none;
+  background:linear-gradient(90deg,rgba(0,0,0,0),rgba(0,0,0,.18) 45%,rgba(0,0,0,.22) 50%,rgba(0,0,0,.18) 55%,rgba(0,0,0,0));
+}
+.page{position:relative;padding:30px 40px;overflow:hidden}
+.page .folio{position:absolute;bottom:14px;font-family:"JetBrains Mono",monospace;font-size:10px;letter-spacing:.2em;color:var(--ink-soft)}
+.page.left .folio{left:40px}
+.page.right .folio{right:40px}
+
+.page.left{display:flex;flex-direction:column}
+.plate{
+  flex:1;min-height:0;position:relative;
+  background:#2a2018 center/cover no-repeat;
+  border:1px solid var(--rule);
+  filter:saturate(.9) contrast(1.04);
+}
+.plate-cap{
+  position:absolute;top:0;left:0;
+  padding:6px 14px;background:var(--ink);color:var(--paper);
+  font-family:"Inter Tight",sans-serif;font-size:10px;letter-spacing:.24em;text-transform:uppercase;
+}
+.caption{
+  display:flex;justify-content:space-between;align-items:baseline;
+  margin-top:10px;font-family:"JetBrains Mono",monospace;font-size:10px;
+  letter-spacing:.14em;text-transform:uppercase;color:var(--ink-soft);
+}
+.caption em{font-style:italic;font-family:"Fraunces",serif;font-size:13px;color:var(--accent);letter-spacing:0;text-transform:none}
+
+.page.right{display:flex;flex-direction:column}
+.kicker{
+  display:inline-block;align-self:flex-start;
+  padding:5px 12px;background:var(--ink);color:var(--paper);
+  font-family:"Inter Tight",sans-serif;font-size:10px;letter-spacing:.26em;text-transform:uppercase;margin-bottom:16px;
+}
+.page.right h1{
+  font-family:"Fraunces",serif;font-weight:900;font-size:clamp(40px,4.4vw,72px);
+  line-height:.92;letter-spacing:-.04em;color:var(--ink);margin-bottom:14px;
+}
+.page.right h1::first-line{font-style:italic;font-weight:300}
+.standfirst{font-family:"Fraunces",serif;font-style:italic;font-weight:300;font-size:19px;color:var(--accent-2);margin-bottom:14px}
+.body-text{font-family:"Fraunces",serif;font-size:15px;line-height:1.6;color:var(--ink);column-count:2;column-gap:28px;column-rule:1px solid rgba(29,20,16,.18);margin-bottom:18px}
+.dropcap{float:left;font-family:"Fraunces",serif;font-weight:900;font-size:62px;line-height:.82;padding:4px 8px 0 0;color:var(--accent)}
+
+.masthead-meta{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:14px 0;border-top:1px solid var(--rule);border-bottom:1px solid var(--rule);margin-bottom:auto}
+.masthead-meta dt{font-family:"Inter Tight",sans-serif;font-size:9px;letter-spacing:.2em;text-transform:uppercase;color:var(--ink-soft);margin-bottom:3px}
+.masthead-meta dd{font-family:"Fraunces",serif;font-style:italic;font-weight:500;font-size:15px;color:var(--ink)}
+
+/* 启动键: 整版最大最重最醒目 */
+.action{display:flex;gap:14px;align-items:stretch;margin-top:20px}
+.launch{
+  position:relative;flex:1;display:flex;flex-direction:column;justify-content:center;gap:2px;
+  padding:18px 26px 18px 64px;
+  background:var(--accent);color:var(--paper);
+  border:2px solid var(--ink);
+  box-shadow:7px 7px 0 var(--ink);
+  cursor:pointer;transition:.15s ease;overflow:hidden;
+}
+.launch:hover{transform:translate(-3px,-3px);box-shadow:10px 10px 0 var(--ink)}
+.launch .lg{position:absolute;inset:0;background:radial-gradient(120px 80px at 18% 50%,rgba(255,255,255,.22),transparent 70%);pointer-events:none}
+.launch .tri{position:absolute;left:24px;top:50%;transform:translateY(-50%);width:0;height:0;border-style:solid;border-width:13px 0 13px 20px;border-color:transparent transparent transparent var(--paper)}
+.launch .lt{font-family:"Fraunces",serif;font-weight:900;font-size:27px;letter-spacing:.02em}
+.launch .ls{font-family:"Inter Tight",sans-serif;font-size:11px;letter-spacing:.22em;text-transform:uppercase;opacity:.88}
+
+.dossier{
+  padding:0 22px;background:transparent;color:var(--ink);
+  border:2px solid var(--ink);
+  font-family:"Inter Tight",sans-serif;font-weight:700;font-size:12px;letter-spacing:.18em;text-transform:uppercase;
+}
+.dossier:hover{background:var(--ink);color:var(--paper)}
+
+/* ---- 页脚: 翻页 + 目录(库) ---- */
+.pager{
+  position:relative;z-index:3;
+  display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:18px;
+  padding:10px 40px 14px;background:var(--paper-2);border-top:3px double var(--rule);
+}
+.flip{
+  padding:12px 18px;background:transparent;border:1.5px solid var(--ink);
+  font-family:"Fraunces",serif;font-style:italic;font-weight:500;font-size:15px;color:var(--ink);
+}
+.flip:hover{background:var(--ink);color:var(--paper)}
+.contents{display:flex;gap:10px;overflow-x:auto;padding:4px 2px}
+.toc{flex:0 0 auto;display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:8px 14px;background:transparent;border:1px solid rgba(29,20,16,.4);min-width:130px;text-align:left}
+.toc .tn{font-family:"JetBrains Mono",monospace;font-size:9px;letter-spacing:.18em;color:var(--ink-soft)}
+.toc .tt{font-family:"Fraunces",serif;font-weight:600;font-size:13px;color:var(--ink);line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:150px}
+.toc:hover{background:var(--paper-3)}
+.toc.on{background:var(--ink)}
+.toc.on .tn{color:var(--paper-3)}
+.toc.on .tt{color:var(--paper)}

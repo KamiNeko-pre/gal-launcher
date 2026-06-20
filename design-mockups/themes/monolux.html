@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>Mono Lux . Gal Launcher</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,500;0,700;1,300;1,500&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="base.css">
+<link rel="stylesheet" href="monolux.css">
+</head>
+<body>
+<div class="grain"></div>
+
+<!-- 美术馆门楣: 馆名 + 导览(全部/收藏/进行) + 检索 + 馆务(导出/恢复/主题/添加) -->
+<header class="lintel">
+  <div class="house">
+    <span class="g">G</span><span class="l">L</span>
+    <em>GALERIE — MONO LUX</em>
+  </div>
+  <nav class="guide">
+    <button class="gtab on" title="全部">全 展</button>
+    <button class="gtab" title="收藏柜">珍 藏</button>
+    <button class="gtab" title="进行中">在 览</button>
+  </nav>
+  <label class="seek"><i>检索</i><input value="search title / studio / tag" readonly><span class="kbd">/</span></label>
+  <div class="curator">
+    <button class="cbtn" title="导出备份"><i>↓</i><em>导出</em></button>
+    <button class="cbtn" title="恢复备份"><i>↑</i><em>恢复</em></button>
+    <button class="cbtn" title="主题设置"><i>☼</i><em>主题</em></button>
+    <button class="cbtn add" title="添加游戏"><i>+</i><em>入藏</em></button>
+  </div>
+</header>
+
+<!-- 长廊: 居中聚光主画作, 两侧透视墙画, 可横向漫游 -->
+<main class="gallery">
+  <div class="floor"></div>
+  <button class="walk left" title="上一幅">‹</button>
+
+  <div class="wall">
+    <!-- 侧墙画(虚化, 远处) -->
+    <figure class="frame far ll" style="--img:url('https://t.vndb.org/cv/73/3273.jpg')"></figure>
+    <figure class="frame near ll" style="--img:url('https://t.vndb.org/cv/72/72.jpg')"></figure>
+
+    <!-- 主聚焦画作 -->
+    <figure class="frame focus">
+      <div class="spotlight"></div>
+      <div class="art" style="background-image:url('https://t.vndb.org/cv/95/195095.jpg')"></div>
+      <div class="silver"></div>
+      <figcaption class="plaque">
+        <span class="no">N&deg; 014</span>
+        <strong>月に寄りそう乙女の作法</strong>
+        <em>Navel ・ 2011 ・ Drama</em>
+      </figcaption>
+    </figure>
+
+    <figure class="frame near rr" style="--img:url('https://t.vndb.org/cv/26/15326.jpg')"></figure>
+    <figure class="frame far rr" style="--img:url('https://t.vndb.org/cv/49/53449.jpg')"></figure>
+  </div>
+
+  <button class="walk right" title="下一幅">›</button>
+
+  <!-- 右侧铭牌说明: 作品详情 + 启动 + 资料 -->
+  <aside class="placard">
+    <div class="kicker">SELECTED WORK ・ 014</div>
+    <h1><span class="serif">Tsuki</span> <i>ni</i> <span class="serif">yorisou</span><span class="thin">otome no sahou</span></h1>
+    <p class="lede">A study in moonlight, lineage, and quiet rebellion.</p>
+    <dl class="spec">
+      <dt>Studio</dt><dd>Navel</dd>
+      <dt>Year</dt><dd>2011</dd>
+      <dt>Length</dt><dd>62 hours ・ 25:14 saved</dd>
+      <dt>Progress</dt><dd>Route 4 / 6</dd>
+    </dl>
+
+    <!-- 启动键: 银箔大铭板, 整厅唯一高反差焦点 -->
+    <button class="enter" title="启动游戏">
+      <span class="sheen"></span>
+      <span class="tri">&#9654;</span>
+      <span class="et">进入展厅</span>
+      <span class="es">ENTER ・ LAUNCH</span>
+    </button>
+    <button class="catalogue" title="资料">作品图录 ・ INFO</button>
+  </aside>
+</main>
+
+<!-- 底部馆藏目录 = 库, 横向漫游缩略 -->
+<footer class="index-bar">
+  <div class="ib-head">
+    <span class="ibl">馆藏目录 ・ COLLECTION</span>
+    <span class="ibc">001 — 031</span>
+  </div>
+  <div class="plates">
+    <button class="plate on"><div class="pcv" style="background-image:url('https://t.vndb.org/cv/95/195095.jpg')"></div><span class="pn">014</span><b>Otome no sahou</b></button>
+    <button class="plate"><div class="pcv" style="background-image:url('https://t.vndb.org/cv/26/15326.jpg')"></div><span class="pn">015</span><b>Sakura no toki</b></button>
+    <button class="plate"><div class="pcv" style="background-image:url('https://t.vndb.org/cv/49/53449.jpg')"></div><span class="pn">016</span><b>9-nine</b></button>
+    <button class="plate"><div class="pcv" style="background-image:url('https://t.vndb.org/cv/63/58163.jpg')"></div><span class="pn">017</span><b>White Album 2</b></button>
+    <button class="plate"><div class="pcv" style="background-image:url('https://t.vndb.org/cv/72/72.jpg')"></div><span class="pn">018</span><b>Clannad</b></button>
+    <button class="plate"><div class="pcv" style="background-image:url('https://t.vndb.org/cv/73/3273.jpg')"></div><span class="pn">019</span><b>Steins;Gate</b></button>
+    <button class="plate"><div class="pcv" style="background:linear-gradient(135deg,#2c2c30,#0a0a0c)"></div><span class="pn">020</span><b>Eustia</b></button>
+    <button class="plate"><div class="pcv" style="background:linear-gradient(135deg,#26262a,#08080a)"></div><span class="pn">021</span><b>Grisaia</b></button>
+  </div>
+</footer>
+</body>
+</html>

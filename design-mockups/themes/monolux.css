@@ -1,0 +1,140 @@
+/* MONO LUX --- 美术馆长廊: 居中聚光主画 + 透视侧墙, 横向漫游, 银箔铭牌 */
+:root{
+  --bg:#070708;
+  --bg-2:#0c0c0f;
+  --wall:#101012;
+  --ink:#f3efe7;
+  --ink-soft:#9c9692;
+  --silver-1:#e8e4dc;
+  --silver-2:#bfb9ae;
+  --silver-3:#7d786e;
+  --hair:rgba(243,239,231,.16);
+}
+
+html,body{height:100%}
+body{
+  background:var(--bg);
+  color:var(--ink);
+  font-family:"Inter",sans-serif;font-weight:300;
+  overflow:hidden;
+  display:flex;flex-direction:column;
+}
+.grain{position:fixed;inset:0;z-index:0;pointer-events:none;background-image:radial-gradient(rgba(243,239,231,.04) 1px,transparent 1px),radial-gradient(rgba(243,239,231,.025) 1px,transparent 1px);background-size:3px 3px,7px 7px;background-position:0 0,1px 1px;mix-blend-mode:screen}
+
+/* ---- 门楣 ---- */
+.lintel{
+  position:relative;z-index:5;
+  display:grid;grid-template-columns:auto auto 1fr auto;align-items:center;gap:28px;
+  padding:18px 44px 16px;
+  border-bottom:1px solid var(--hair);
+  background:rgba(7,7,8,.8);backdrop-filter:blur(10px);
+}
+.house{display:flex;align-items:baseline;gap:12px}
+.house .g,.house .l{font-family:"Cormorant Garamond",serif;font-weight:500;font-size:32px;line-height:1;background:linear-gradient(180deg,var(--silver-1),var(--silver-3));-webkit-background-clip:text;background-clip:text;color:transparent;letter-spacing:-.02em}
+.house .l{font-style:italic}
+.house em{font-family:"JetBrains Mono",monospace;font-style:normal;font-size:10px;letter-spacing:.3em;color:var(--ink-soft);text-transform:uppercase}
+
+.guide{display:flex;gap:6px}
+.gtab{padding:9px 16px;min-height:44px;background:transparent;border:1px solid var(--hair);font-family:"Cormorant Garamond",serif;font-style:italic;font-weight:500;font-size:16px;color:var(--ink-soft);letter-spacing:.04em}
+.gtab:hover{border-color:var(--silver-2);color:var(--silver-1)}
+.gtab.on{background:linear-gradient(180deg,#1a1a1d,#0a0a0c);border-color:var(--silver-2);color:var(--silver-1);box-shadow:inset 0 1px 0 rgba(243,239,231,.16)}
+
+.seek{justify-self:center;display:flex;align-items:center;gap:10px;width:min(380px,100%);padding:10px 14px;border:1px solid var(--hair);background:rgba(243,239,231,.04)}
+.seek i{font-style:normal;font-family:"JetBrains Mono",monospace;font-size:10px;letter-spacing:.26em;color:var(--silver-2)}
+.seek input{flex:1;background:transparent;border:none;outline:none;font-family:"Cormorant Garamond",serif;font-style:italic;font-size:15px;color:var(--ink-soft)}
+.seek .kbd{font-family:"JetBrains Mono",monospace;font-size:10px;padding:2px 6px;border:1px solid var(--hair);color:var(--ink-soft)}
+
+.curator{display:flex;gap:6px}
+.cbtn{display:flex;flex-direction:column;align-items:center;gap:1px;min-width:48px;min-height:48px;justify-content:center;background:transparent;border:1px solid var(--hair);color:var(--ink)}
+.cbtn i{font-style:normal;font-size:15px;color:var(--silver-1)}
+.cbtn em{font-style:normal;font-family:"JetBrains Mono",monospace;font-size:7px;letter-spacing:.16em;color:var(--ink-soft)}
+.cbtn:hover{border-color:var(--silver-2);background:rgba(243,239,231,.04)}
+.cbtn.add{background:linear-gradient(180deg,var(--silver-1),var(--silver-3));border-color:var(--silver-1)}
+.cbtn.add i{color:var(--bg);font-size:20px}
+.cbtn.add em{color:var(--bg)}
+
+/* ---- 长廊 ---- */
+.gallery{
+  position:relative;z-index:1;flex:1;min-height:0;
+  display:grid;grid-template-columns:1fr 360px;align-items:center;
+  perspective:1400px;
+  background:
+    radial-gradient(120% 80% at 50% 0%,#141416 0%,var(--bg) 60%),
+    var(--bg);
+}
+.floor{position:absolute;left:0;right:0;bottom:0;height:34%;z-index:0;background:linear-gradient(180deg,transparent,rgba(243,239,231,.04));border-top:1px solid var(--hair);transform:perspective(600px) rotateX(58deg);transform-origin:bottom}
+
+.walk{position:absolute;top:42%;z-index:6;width:54px;height:54px;border-radius:50%;background:rgba(20,20,22,.7);backdrop-filter:blur(10px);border:1px solid var(--hair);font-size:26px;color:var(--silver-2)}
+.walk:hover{border-color:var(--silver-1);color:var(--silver-1);box-shadow:0 0 24px rgba(232,228,220,.18)}
+.walk.left{left:30px}
+.walk.right{left:calc(100% - 360px - 84px)}
+
+.wall{position:relative;height:100%;display:flex;align-items:center;justify-content:center;transform-style:preserve-3d}
+
+.frame{position:absolute;border-radius:2px}
+.frame.far,.frame.near{aspect-ratio:158/211;background:var(--img) center/cover no-repeat;background-color:#0c0c0f;filter:saturate(.2) brightness(.4) contrast(1.05);box-shadow:0 0 0 1px var(--hair),0 30px 50px rgba(0,0,0,.6)}
+.frame.far{height:42%;opacity:.4}
+.frame.near{height:60%;opacity:.62}
+.frame.ll.near{transform:translateX(-300px) rotateY(34deg)}
+.frame.ll.far{transform:translateX(-470px) rotateY(40deg)}
+.frame.rr.near{transform:translateX(300px) rotateY(-34deg)}
+.frame.rr.far{transform:translateX(470px) rotateY(-40deg)}
+
+.frame.focus{position:relative;height:74%;aspect-ratio:158/211;z-index:3}
+.spotlight{position:absolute;left:50%;top:-60%;transform:translateX(-50%);width:200%;height:200%;z-index:-1;background:radial-gradient(ellipse 40% 60% at 50% 30%,rgba(243,239,231,.18),transparent 60%);pointer-events:none}
+.frame.focus .art{width:100%;height:100%;background:#0c0c0f center/cover no-repeat;filter:saturate(.5) contrast(1.06);box-shadow:0 0 0 6px #1a1a1d,0 0 0 8px var(--silver-3),0 50px 90px rgba(0,0,0,.7),0 0 70px rgba(232,228,220,.1)}
+.frame.focus .silver{position:absolute;inset:0;pointer-events:none;background:linear-gradient(135deg,rgba(232,228,220,.16) 0%,transparent 32%,transparent 68%,rgba(125,120,110,.2) 100%);mix-blend-mode:screen}
+.plaque{position:absolute;left:50%;bottom:-104px;transform:translateX(-50%);text-align:center;width:max-content;max-width:280px}
+.plaque .no{font-family:"JetBrains Mono",monospace;font-size:9px;letter-spacing:.3em;color:var(--silver-2)}
+.plaque strong{display:block;margin-top:4px;font-family:"Cormorant Garamond",serif;font-weight:500;font-size:18px;color:var(--silver-1);letter-spacing:.01em}
+.plaque em{display:block;margin-top:2px;font-style:italic;font-family:"Cormorant Garamond",serif;font-size:13px;color:var(--ink-soft)}
+
+/* ---- 右侧铭牌说明 ---- */
+.placard{
+  align-self:stretch;display:flex;flex-direction:column;justify-content:center;
+  padding:36px 40px 36px 28px;
+  border-left:1px solid var(--hair);
+  background:linear-gradient(90deg,transparent,rgba(243,239,231,.02));
+}
+.placard .kicker{font-family:"JetBrains Mono",monospace;font-size:10px;letter-spacing:.3em;color:var(--silver-2);text-transform:uppercase;margin-bottom:18px;position:relative;padding-left:30px}
+.placard .kicker::before{content:"";position:absolute;left:0;top:50%;width:20px;height:1px;background:linear-gradient(90deg,var(--silver-3),var(--silver-1))}
+.placard h1{font-family:"Cormorant Garamond",serif;font-weight:300;font-size:clamp(38px,3.4vw,56px);line-height:.98;letter-spacing:-.02em;color:var(--ink);margin-bottom:18px}
+.placard h1 .serif{background:linear-gradient(180deg,var(--silver-1),var(--silver-2) 60%,var(--silver-3));-webkit-background-clip:text;background-clip:text;color:transparent;font-weight:500}
+.placard h1 i{font-style:italic;color:var(--ink-soft)}
+.placard h1 .thin{display:block;font-style:italic;font-weight:300;font-size:.4em;letter-spacing:.04em;color:var(--ink-soft);margin-top:10px}
+.placard .lede{font-family:"Cormorant Garamond",serif;font-style:italic;font-weight:300;font-size:18px;line-height:1.5;color:var(--ink-soft);margin-bottom:22px}
+
+.spec{display:grid;grid-template-columns:auto 1fr;gap:6px 20px;padding:16px 0;border-top:1px solid var(--hair);border-bottom:1px solid var(--hair);margin-bottom:26px}
+.spec dt{font-family:"JetBrains Mono",monospace;font-size:9px;letter-spacing:.26em;text-transform:uppercase;color:var(--ink-soft);align-self:center}
+.spec dd{font-family:"Cormorant Garamond",serif;font-style:italic;font-weight:500;font-size:16px;color:var(--ink)}
+
+/* 启动键: 银箔大铭板, 全厅唯一高反差焦点 */
+.enter{
+  position:relative;display:flex;flex-direction:column;align-items:flex-start;gap:2px;
+  padding:20px 28px 20px 64px;margin-bottom:12px;
+  background:linear-gradient(180deg,var(--silver-1) 0%,var(--silver-2) 50%,var(--silver-3) 100%);
+  border:1px solid var(--silver-1);color:var(--bg);cursor:pointer;overflow:hidden;
+  transition:.2s ease;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.6),inset 0 -1px 0 rgba(0,0,0,.2),0 24px 50px rgba(0,0,0,.5),0 0 40px rgba(232,228,220,.24);
+}
+.enter:hover{filter:brightness(1.08);transform:translateY(-2px);box-shadow:inset 0 1px 0 rgba(255,255,255,.6),0 30px 64px rgba(0,0,0,.6),0 0 56px rgba(232,228,220,.36)}
+.enter .sheen{position:absolute;inset:0;pointer-events:none;background:linear-gradient(135deg,rgba(255,255,255,.5) 0%,transparent 26%,transparent 72%,rgba(0,0,0,.12) 100%)}
+.enter .tri{position:absolute;left:26px;top:50%;transform:translateY(-50%);font-size:22px;color:var(--bg)}
+.enter .et{font-family:"Cormorant Garamond",serif;font-style:italic;font-weight:500;font-size:27px;color:var(--bg);letter-spacing:-.01em}
+.enter .es{font-family:"JetBrains Mono",monospace;font-size:9px;letter-spacing:.3em;color:rgba(7,7,8,.7);text-transform:uppercase}
+
+.catalogue{padding:14px 22px;background:transparent;color:var(--ink);border:1px solid var(--hair);font-family:"JetBrains Mono",monospace;font-size:10px;letter-spacing:.26em;text-transform:uppercase}
+.catalogue:hover{border-color:var(--silver-2);color:var(--silver-1)}
+
+/* ---- 底部馆藏目录 = 库 ---- */
+.index-bar{position:relative;z-index:3;padding:14px 44px 18px;border-top:1px solid var(--hair);background:rgba(7,7,8,.82);backdrop-filter:blur(10px)}
+.ib-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px}
+.ibl{font-family:"JetBrains Mono",monospace;font-size:10px;letter-spacing:.3em;text-transform:uppercase;color:var(--silver-2)}
+.ibc{font-family:"JetBrains Mono",monospace;font-size:10px;letter-spacing:.26em;color:var(--ink-soft)}
+.plates{display:flex;gap:20px;overflow-x:auto;padding-bottom:4px}
+.plate{flex:0 0 auto;display:flex;flex-direction:column;align-items:flex-start;width:120px;background:transparent;cursor:pointer}
+.pcv{width:120px;aspect-ratio:158/211;background:#0c0c0f center/cover no-repeat;filter:saturate(.25) brightness(.7) contrast(1.05);box-shadow:0 0 0 1px var(--hair),0 18px 30px rgba(0,0,0,.5);transition:.25s ease}
+.plate:hover .pcv{filter:saturate(.55) brightness(.95);box-shadow:0 0 0 1px var(--silver-2),0 22px 40px rgba(0,0,0,.6)}
+.plate.on .pcv{filter:saturate(.85) contrast(1.04);box-shadow:0 0 0 1px var(--silver-1),0 22px 44px rgba(0,0,0,.6),0 0 30px rgba(232,228,220,.22)}
+.plate .pn{font-family:"JetBrains Mono",monospace;font-size:9px;letter-spacing:.22em;color:var(--ink-soft);margin-top:8px}
+.plate b{font-family:"Cormorant Garamond",serif;font-style:italic;font-weight:500;font-size:15px;color:var(--silver-1);line-height:1.15;margin-top:1px}

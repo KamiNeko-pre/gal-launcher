@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>Aurora . Gal Launcher</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Manrope:wght@300;400;500;600;700&family=JetBrains+Mono&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="base.css">
+<link rel="stylesheet" href="aurora.css">
+</head>
+<body>
+<div class="sky"></div>
+<div class="aurora a1"></div>
+<div class="aurora a2"></div>
+<div class="aurora a3"></div>
+<div class="stars"></div>
+
+<!-- 顶部胶囊: 品牌 + 功能(全部/收藏/进行/导出/恢复/主题/添加) 全做成悬浮玻璃圆钮 -->
+<header class="float-top">
+  <div class="brand"><span class="orb"></span><strong>Aurora</strong></div>
+  <nav class="orbs">
+    <button class="orbtn on" title="全部"><i>◉</i><em>全部</em></button>
+    <button class="orbtn" title="收藏柜"><i>♡</i><em>收藏</em></button>
+    <button class="orbtn" title="进行中"><i>◐</i><em>进行</em></button>
+    <span class="osep"></span>
+    <button class="orbtn" title="导出备份"><i>↓</i><em>导出</em></button>
+    <button class="orbtn" title="恢复备份"><i>↑</i><em>恢复</em></button>
+    <button class="orbtn" title="主题设置"><i>☀</i><em>主题</em></button>
+    <button class="orbtn add" title="添加游戏"><i>+</i><em>添加</em></button>
+  </nav>
+</header>
+
+<!-- 顶部居中搜索胶囊 -->
+<label class="float-search"><i>⌕</i><input value="搜索标题、会社、标签" readonly><span class="kbd">/</span></label>
+
+<!-- 沉浸式舞台: 居中封面轮播 -->
+<main class="theater">
+
+  <!-- 左侧浮玻璃: 统计 -->
+  <aside class="glass stat-card">
+    <h3>今夜</h3>
+    <div class="big-time">25:14<span>:02</span></div>
+    <span class="cap">上次存档</span>
+    <div class="mini-stats">
+      <div><b>62h</b><i>累计</i></div>
+      <div><b>31</b><i>收录</i></div>
+      <div><b>4</b><i>进行</i></div>
+      <div><b>18</b><i>通关</i></div>
+    </div>
+    <div class="prog"><div class="pbar"><i style="width:68%"></i></div><span>第 4 / 6 线</span></div>
+  </aside>
+
+  <!-- 中央: 当前封面 + 左右轮播箭头 -->
+  <section class="stage-center">
+    <button class="nav prev" title="上一部">‹</button>
+
+    <div class="cover-stack">
+      <div class="ghost-cover left" style="background-image:url('https://t.vndb.org/cv/26/15326.jpg')"></div>
+      <div class="ghost-cover right" style="background-image:url('https://t.vndb.org/cv/49/53449.jpg')"></div>
+      <div class="cover-main">
+        <div class="cover-img" style="background-image:url('https://t.vndb.org/cv/95/195095.jpg')"></div>
+        <div class="cover-glow"></div>
+      </div>
+    </div>
+
+    <button class="nav next" title="下一部">›</button>
+
+    <div class="title-block">
+      <span class="meta">NAVEL ・ 2011 ・ DRAMA / 学園</span>
+      <h1>月に寄りそう<i>乙女の作法</i></h1>
+      <p class="sub">A study in moonlight, lineage and quiet rebellion.</p>
+
+      <!-- 启动键: 居中发光大胶囊, 整屏最亮焦点 -->
+      <div class="acts">
+        <button class="play" title="启动游戏">
+          <span class="halo"></span>
+          <span class="tri"></span>
+          <span class="lbl">启动游戏</span>
+          <span class="sub-lbl">LAUNCH</span>
+        </button>
+        <button class="ghost" title="资料">资料</button>
+      </div>
+    </div>
+
+    <!-- 轮播圆点 + 标签 -->
+    <div class="dots">
+      <span class="dot on"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span>
+    </div>
+    <div class="tagline">
+      <button class="tg on">纯爱</button>
+      <button class="tg">悬疑</button>
+      <button class="tg">学園</button>
+      <button class="tg">汉化</button>
+      <button class="tg">名作</button>
+    </div>
+  </section>
+
+  <!-- 右侧浮玻璃: 续读队列 -->
+  <aside class="glass queue-card">
+    <h3>续读</h3>
+    <ul class="queue">
+      <li class="on"><div class="qcv" style="background-image:url('https://t.vndb.org/cv/95/195095.jpg')"></div><div><b>月に寄りそう乙女の作法</b><span>navel</span></div></li>
+      <li><div class="qcv" style="background-image:url('https://t.vndb.org/cv/26/15326.jpg')"></div><div><b>サクラノ刻</b><span>frontwing</span></div></li>
+      <li><div class="qcv" style="background-image:url('https://t.vndb.org/cv/49/53449.jpg')"></div><div><b>9-nine</b><span>palette</span></div></li>
+      <li><div class="qcv" style="background-image:url('https://t.vndb.org/cv/63/58163.jpg')"></div><div><b>WHITE ALBUM 2</b><span>leaf</span></div></li>
+    </ul>
+  </aside>
+</main>
+
+<!-- 底部: 全库缩略胶卷(点击聚焦轮播) -->
+<footer class="filmstrip">
+  <span class="fl">全部作品 ・ 31</span>
+  <div class="strip">
+    <button class="frame on" style="background-image:url('https://t.vndb.org/cv/95/195095.jpg')"></button>
+    <button class="frame" style="background-image:url('https://t.vndb.org/cv/26/15326.jpg')"></button>
+    <button class="frame" style="background-image:url('https://t.vndb.org/cv/49/53449.jpg')"></button>
+    <button class="frame" style="background-image:url('https://t.vndb.org/cv/63/58163.jpg')"></button>
+    <button class="frame" style="background-image:url('https://t.vndb.org/cv/72/72.jpg')"></button>
+    <button class="frame" style="background-image:url('https://t.vndb.org/cv/73/3273.jpg')"></button>
+    <button class="frame" style="background:linear-gradient(135deg,#f7c8d8,#a4cae0)"></button>
+    <button class="frame" style="background:linear-gradient(135deg,#d6e7f3,#fbd2de)"></button>
+    <button class="frame" style="background:linear-gradient(135deg,#cfe2ee,#f3c7d6)"></button>
+    <button class="frame" style="background:linear-gradient(135deg,#e8d4ee,#c8def0)"></button>
+  </div>
+</footer>
+</body>
+</html>

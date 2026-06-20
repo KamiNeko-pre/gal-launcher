@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>Arcade . Gal Launcher</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=VT323&family=Space+Grotesk:wght@400;500;700&family=Press+Start+2P&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="base.css">
+<link rel="stylesheet" href="arcade.css">
+</head>
+<body>
+<div class="room"></div>
+
+<!-- 整机：一台掌机/街机的机体外壳 -->
+<div class="console">
+
+  <!-- 机体顶边：品牌铭牌 + 电源指示 -->
+  <div class="deck-top">
+    <div class="badge"><span class="hex">[//]</span> GAL<b>ARCADE</b> <span class="model">mk-VII</span></div>
+    <div class="power">
+      <span class="led grn"></span>POWER
+      <span class="led amb"></span>DISK
+      <span class="clock">03:24:11</span>
+    </div>
+  </div>
+
+  <div class="deck-body">
+
+    <!-- 左控制柱：方向键(全部/收藏/进行) + 系统钮(导出/恢复/主题) -->
+    <aside class="pad-left">
+      <div class="pad-label">SELECT MODE</div>
+      <div class="dpad">
+        <button class="dbtn up on" title="全部"><b>全</b><span>ALL</span></button>
+        <button class="dbtn left" title="收藏柜"><b>柜</b><span>FAV</span></button>
+        <button class="dbtn right" title="进行中"><b>读</b><span>NOW</span></button>
+        <div class="dhub"></div>
+      </div>
+      <div class="pad-label sys">SYSTEM</div>
+      <div class="sysrow">
+        <button class="sbtn" title="导出备份"><b>&darr;</b><span>SAVE</span></button>
+        <button class="sbtn" title="恢复备份"><b>&uarr;</b><span>LOAD</span></button>
+        <button class="sbtn" title="主题设置"><b>&#9728;</b><span>SKIN</span></button>
+      </div>
+    </aside>
+
+    <!-- 中央 CRT 屏幕 -->
+    <section class="crt-screen">
+      <div class="scan"></div>
+      <div class="screen-glow"></div>
+
+      <!-- 屏内 HUD: 搜索 + 统计 -->
+      <div class="hud">
+        <div class="hud-search"><i>SRCH&gt;</i><input value="title / studio / tag" readonly><span class="cur">_</span></div>
+        <div class="hud-stat">
+          <span><i>TIME</i>62h14m</span>
+          <span><i>ENT</i>31</span>
+          <span><i>RUN</i>04</span>
+          <span><i>END</i>18</span>
+        </div>
+      </div>
+
+      <!-- 屏内主显: 当前作品 -->
+      <div class="game-view">
+        <div class="poster">
+          <img src="https://t.vndb.org/cv/95/195095.jpg" alt="">
+          <div class="corner tl"></div><div class="corner tr"></div>
+          <div class="corner bl"></div><div class="corner br"></div>
+          <div class="loaded">NOW LOADED</div>
+        </div>
+        <div class="game-info">
+          <div class="g-id">STAGE 014 . NAVEL . 2011</div>
+          <h1>月に寄りそう<br>乙女の作法<span class="blink">_</span></h1>
+          <div class="rpg">
+            <div><span>HP</span><b style="--p:88%"></b><i>88</i></div>
+            <div><span>MP</span><b style="--p:62%"></b><i>62</i></div>
+            <div><span>EXP</span><b style="--p:41%"></b><i>41</i></div>
+          </div>
+          <p class="blurb">&gt; 近月家のお嬢様候補として 女の子として生きる主人公の 奇妙でやさしい学園生活</p>
+        </div>
+      </div>
+
+      <!-- 续读 + 标签做成频道选择条 -->
+      <div class="channels">
+        <span class="ch-l">RESUME</span>
+        <button class="ch on">otome no sahou</button>
+        <button class="ch">sakura no toki</button>
+        <button class="ch">9-nine</button>
+        <span class="ch-l tag">TAGS</span>
+        <button class="ch tg">pure</button>
+        <button class="ch tg">mystery</button>
+        <button class="ch tg">school</button>
+      </div>
+    </section>
+
+    <!-- 右控制柱：START 大按钮(启动) + A资料 + 投币(添加) -->
+    <aside class="pad-right">
+      <button class="coin" title="添加游戏"><b>+</b><span>INSERT<br>COIN</span></button>
+
+      <button class="ab info" title="资料"><b>A</b><span>INFO</span></button>
+
+      <div class="start-wrap">
+        <button class="start" title="启动游戏">
+          <span class="ring"></span>
+          <span class="tri">&#9654;</span>
+          <span class="st">START</span>
+          <span class="ss">PRESS TO PLAY</span>
+        </button>
+        <div class="start-cap">&#9650; 启 动 游 戏 &#9650;</div>
+      </div>
+    </aside>
+
+  </div>
+
+  <!-- 机体底边：卡带槽 = 选游戏(库) -->
+  <div class="cartridge-bay">
+    <div class="bay-label">&#9642; SELECT CARTRIDGE</div>
+    <div class="cart-rail">
+      <button class="cart on"><div class="cart-cv" style="background-image:url('https://t.vndb.org/cv/95/195095.jpg')"></div><span>014</span></button>
+      <button class="cart"><div class="cart-cv" style="background-image:url('https://t.vndb.org/cv/26/15326.jpg')"></div><span>015</span></button>
+      <button class="cart"><div class="cart-cv" style="background-image:url('https://t.vndb.org/cv/49/53449.jpg')"></div><span>016</span></button>
+      <button class="cart"><div class="cart-cv" style="background-image:url('https://t.vndb.org/cv/63/58163.jpg')"></div><span>017</span></button>
+      <button class="cart"><div class="cart-cv" style="background-image:url('https://t.vndb.org/cv/72/72.jpg')"></div><span>018</span></button>
+      <button class="cart"><div class="cart-cv" style="background-image:url('https://t.vndb.org/cv/73/3273.jpg')"></div><span>019</span></button>
+      <button class="cart"><div class="cart-cv" style="background:linear-gradient(135deg,#2a0d2c,#0a1620)"></div><span>020</span></button>
+      <button class="cart"><div class="cart-cv" style="background:linear-gradient(135deg,#0d2a32,#1a0a20)"></div><span>021</span></button>
+      <button class="cart"><div class="cart-cv" style="background:linear-gradient(135deg,#2a1a3a,#0a0612)"></div><span>022</span></button>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

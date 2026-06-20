@@ -1,0 +1,7 @@
+/* base reset shared across theme mockups */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{overflow:hidden;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
+img{display:block;max-width:100%}
+.row::-webkit-scrollbar,.shelf ::-webkit-scrollbar{display:none}

@@ -1664,3 +1664,35 @@ textarea:focus-visible {
     scroll-behavior: auto !important;
   }
 }
+
+/* ================================================
+   THEME GALLERY PREVIEW SWATCHES (per-theme)
+   ================================================ */
+.theme-preview-cinema {
+  background:
+    linear-gradient(180deg, #e89aa8 0%, #e89aa8 22%, transparent 22%),
+    linear-gradient(135deg, #0c0f16, #1a2230 60%, #2a1c24);
+}
+.theme-preview-editorial {
+  background:
+    linear-gradient(180deg, #b8442a 0%, #b8442a 22%, transparent 22%),
+    linear-gradient(135deg, #f3ead8, #e7d8be);
+}
+.theme-preview-arcade {
+  background:
+    linear-gradient(180deg, #ff2d8c 0%, #5cf3ff 50%, #74ff8a 100%);
+  background-blend-mode: normal;
+}
+.theme-preview-atelier {
+  background:
+    linear-gradient(180deg, #d94f5c 0%, #d94f5c 22%, transparent 22%),
+    linear-gradient(135deg, #efe3d4, #fbd2de 60%, #d6e7f3);
+}
+.theme-preview-monolux {
+  background:
+    linear-gradient(180deg, #e8e4dc 0%, #e8e4dc 22%, transparent 22%),
+    linear-gradient(135deg, #070708, #1a1a1d);
+}
+.theme-preview-aurora {
+  background: linear-gradient(135deg, #e6f1f9, #9ed0ea 40%, #f5a8c1 100%);
+}

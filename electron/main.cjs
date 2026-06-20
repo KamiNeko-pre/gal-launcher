@@ -806,12 +806,12 @@ async function translateToChinese(text) {
   const chunks = [];
   for (let index = 0; index < value.length; index += 450) chunks.push(value.slice(index, index + 450));
   const translated = [];
-  for (const chunk of chunks.slice(0, 4)) {
+  for (const chunk of chunks.slice(0, 2)) {
     try {
       const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=zh-CN&dt=t&q=${encodeURIComponent(chunk)}`;
       const response = await fetch(url, {
         headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36" },
-        signal: AbortSignal.timeout(12000)
+        signal: AbortSignal.timeout(4000)
       });
       if (!response.ok) throw new Error(`translate ${response.status}`);
       const data = await response.json();
@@ -821,7 +821,7 @@ async function translateToChinese(text) {
         const fallbackUrl = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(chunk)}&langpair=en|zh-CN`;
         const fallback = await fetch(fallbackUrl, {
           headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36" },
-          signal: AbortSignal.timeout(15000)
+          signal: AbortSignal.timeout(6000)
         });
         if (!fallback.ok) throw new Error(`fallback translate ${fallback.status}`);
         const data = await fallback.json();
@@ -898,7 +898,7 @@ async function downloadOnlineImage(url, id, dirName) {
 
   const response = await fetch(url, {
     headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36" },
-    signal: AbortSignal.timeout(30000)
+    signal: AbortSignal.timeout(8000)
   });
   if (!response.ok) return "";
   fs.writeFileSync(filePath, Buffer.from(await response.arrayBuffer()));
@@ -956,10 +956,11 @@ async function searchMetadataCandidates(game, keyword = "") {
 async function hydrateMetadataCandidate(game, candidate) {
   const vn = (await getVndbById(candidate.sourceId)) || (await searchVndb(candidate.title || "")).find((item) => item.id === candidate.sourceId);
   if (!vn) return { confidence: 0, source: "none" };
-  const coverPath = await downloadOnlineImage(vn.image?.url, `${game.id || vn.id}-${vn.id}`, "covers");
+  const coverPath = vn.image?.url || "";
+  let description = vn.description || "";
+  try { description = await translateToChinese(vn.description || ""); } catch { /* translation timeout — use original */ }
   const title = pickPreferredTitle(vn);
   const developer = (vn.developers || []).map((item) => item.name).filter(Boolean).join(", ");
-  const description = await translateToChinese(vn.description || "");
 
   return {
     source: "vndb",

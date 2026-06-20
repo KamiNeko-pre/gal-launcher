@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>Editorial . Gal Launcher</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,800;0,9..144,900;1,9..144,300;1,9..144,500&family=Inter+Tight:wght@400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="base.css">
+<link rel="stylesheet" href="editorial.css">
+</head>
+<body>
+<div class="paper"></div>
+
+<!-- 刊头：品牌 + 检索 + 工具栏(7功能键) -->
+<header class="masthead">
+  <div class="brand">
+    <div class="mark">G/L</div>
+    <div class="info">
+      <strong>GAL ATELIER</strong>
+      <em>Monthly . Vol.07 . Winter 2026</em>
+    </div>
+  </div>
+
+  <div class="search">
+    <i>检索</i>
+    <input value="搜索标题、会社、标签" readonly>
+    <span class="kbd">/</span>
+  </div>
+
+  <!-- 工具栏 = 功能键，做成杂志编辑台的图标钮，每个带文字标注 -->
+  <nav class="toolbar" aria-label="功能">
+    <button class="tool on" title="全部"><b>全</b><span>全部</span></button>
+    <button class="tool" title="收藏柜"><b>柜</b><span>收藏</span></button>
+    <button class="tool" title="进行中"><b>读</b><span>进行</span></button>
+    <span class="tsep"></span>
+    <button class="tool" title="导出备份"><b>&darr;</b><span>导出</span></button>
+    <button class="tool" title="恢复备份"><b>&uarr;</b><span>恢复</span></button>
+    <button class="tool" title="主题设置"><b>&#9728;</b><span>主题</span></button>
+    <button class="tool add" title="添加游戏"><b>+</b><span>收录</span></button>
+  </nav>
+</header>
+
+<!-- 发行信息栏 = 统计 + 继续 + 标签 -->
+<div class="ribbon">
+  <div class="circ">
+    <span class="ci"><b>62h 14m</b>累计阅读</span>
+    <span class="ci"><b>31</b>收录</span>
+    <span class="ci"><b>4</b>连载中</span>
+    <span class="ci"><b>18</b>已完结</span>
+  </div>
+  <div class="resume">
+    <span class="rl">续读</span>
+    <button class="rchip on">月に寄りそう乙女の作法</button>
+    <button class="rchip">サクラノ刻</button>
+    <button class="rchip">9-nine</button>
+  </div>
+</div>
+<div class="topics">
+  <span class="topl">专题</span>
+  <button class="topic on">纯爱</button>
+  <button class="topic">悬疑</button>
+  <button class="topic">学園</button>
+  <button class="topic">汉化</button>
+  <button class="topic">名作</button>
+  <button class="topic">长篇</button>
+</div>
+
+<!-- 对开内页：左页大图刊头，右页正文分栏 -->
+<main class="spread">
+  <div class="binding"></div>
+
+  <section class="page left">
+    <div class="folio">p. 014</div>
+    <div class="plate" style="background-image:url('https://t.vndb.org/sf/95/195095.jpg')">
+      <div class="plate-cap">封面故事 . COVER STORY</div>
+    </div>
+    <div class="caption">
+      <span>摄于近月家 . 月夜</span>
+      <em>Navel . 2011</em>
+    </div>
+  </section>
+
+  <section class="page right">
+    <div class="folio">p. 015</div>
+    <div class="kicker">特集 . 第 014 号</div>
+    <h1>月に寄りそう<br>乙女の作法</h1>
+    <p class="standfirst">封建的な家督争いと、お嬢様候補としての教育。</p>
+    <p class="body-text">
+      <span class="dropcap">封</span>建的な家督争いと、近月家のお嬢様候補としての教育——「女の子」として生きることになった主人公が、奇妙でやさしい学園生活に身を投じる、Navel 2011 年の代表作。長きにわたり語り継がれる、王道にして異色の物語。
+    </p>
+    <dl class="masthead-meta">
+      <div><dt>会社</dt><dd>Navel</dd></div>
+      <div><dt>发售</dt><dd>2011.10.28</dd></div>
+      <div><dt>时长</dt><dd>62 时间</dd></div>
+      <div><dt>进度</dt><dd>第 4 / 6 线</dd></div>
+    </dl>
+
+    <!-- 启动键：超显眼，整版最大最重 -->
+    <div class="action">
+      <button class="launch">
+        <span class="lg"></span>
+        <span class="tri"></span>
+        <span class="lt">立即阅读</span>
+        <span class="ls">LAUNCH . 第 014 号</span>
+      </button>
+      <button class="dossier">资料卡 INFO</button>
+    </div>
+  </section>
+</main>
+
+<!-- 页脚 = 翻页导航 + 目录(库列表) -->
+<footer class="pager">
+  <button class="flip prev" title="上一部">&#8249; 前页</button>
+  <div class="contents" role="list">
+    <button class="toc on" role="listitem"><span class="tn">014</span><span class="tt">月に寄りそう乙女の作法</span></button>
+    <button class="toc" role="listitem"><span class="tn">015</span><span class="tt">サクラノ刻</span></button>
+    <button class="toc" role="listitem"><span class="tn">016</span><span class="tt">9-nine</span></button>
+    <button class="toc" role="listitem"><span class="tn">017</span><span class="tt">WHITE ALBUM 2</span></button>
+    <button class="toc" role="listitem"><span class="tn">018</span><span class="tt">CLANNAD</span></button>
+    <button class="toc" role="listitem"><span class="tn">019</span><span class="tt">Steins;Gate</span></button>
+    <button class="toc" role="listitem"><span class="tn">020</span><span class="tt">穢翼のユースティア</span></button>
+  </div>
+  <button class="flip next" title="下一部">后页 &#8250;</button>
+</footer>
+</body>
+</html>

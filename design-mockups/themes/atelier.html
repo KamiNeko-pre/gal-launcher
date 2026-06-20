@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>Atelier . Gal Launcher</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;600;700&family=Shippori+Mincho:wght@400;600;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="base.css">
+<link rel="stylesheet" href="atelier.css">
+</head>
+<body>
+<div class="desk"></div>
+
+<!-- 顶部夹子横杆: 品牌 + 检索 + 功能夹片(全部/收藏/进行/主题) -->
+<div class="clipbar">
+  <div class="logo"><span class="stamp">GAL</span><strong>atelier</strong><em>～ 我的视觉小说手账</em></div>
+  <label class="search"><span>q.</span><input value="搜索标题、会社、标签" readonly></label>
+  <div class="clips">
+    <button class="clip on" title="全部"><span>全部</span></button>
+    <button class="clip" title="收藏柜"><span>收藏</span></button>
+    <button class="clip" title="进行中"><span>进行</span></button>
+    <button class="clip" title="主题设置"><span>主题</span></button>
+  </div>
+</div>
+
+<!-- 拼贴台面 -->
+<main class="board">
+
+  <!-- 中央: 当前作品大拍立得 -->
+  <article class="hero-polaroid" style="--rot:-1.5deg">
+    <div class="washi top"></div>
+    <div class="ph" style="background-image:url('https://t.vndb.org/sf/95/195095.jpg')"></div>
+    <div class="hand">
+      <span class="num">No.014 ・ navel ・ 2011</span>
+      <h1>月に寄りそう乙女の作法</h1>
+      <p class="kana">tsuki ni yorisou otome no sahou</p>
+      <p class="memo">近月家のお嬢様候補として、女の子として生きる<br>主人公の、奇妙でやさしい学園生活 ♡</p>
+      <div class="rate"><b>★★★★</b><s>★</s><em>4.2 ／ yoshino</em></div>
+    </div>
+    <!-- 启动键: 红色橡皮图章, 最醒目 -->
+    <button class="play-stamp" title="启动游戏">
+      <span class="ink"></span>
+      <span class="pt">▶ PLAY</span>
+      <span class="ps">点 此 开 始</span>
+    </button>
+  </article>
+
+  <!-- 便利贴: 资料 + 上次游玩 -->
+  <aside class="note ynote" style="--rot:3deg;top:64px;right:78px">
+    <strong>上次游玩</strong>
+    <p>2026.06.18<br>02:11 a.m.</p>
+    <em>第 4／6 线</em>
+  </aside>
+  <button class="note info-note" style="--rot:-2.4deg;top:236px;right:120px" title="资料">
+    <strong>翻看资料 →</strong>
+    <p>会社・发售日<br>标签・简介</p>
+    <em>INFO</em>
+  </button>
+
+  <!-- 统计票根 -->
+  <aside class="ticket" style="--rot:1.6deg;bottom:150px;right:96px">
+    <span>READING LOG</span>
+    <div class="trow"><b>62h 14m</b><i>累计</i></div>
+    <div class="trow"><b>31</b><i>收录</i></div>
+    <div class="trow"><b>4 / 18</b><i>进行 / 通关</i></div>
+  </aside>
+
+  <!-- 标签便签串 -->
+  <div class="tagstrip" style="--rot:-1deg">
+    <span class="tl">tags ♪</span>
+    <button class="tg on">纯爱</button>
+    <button class="tg">悬疑</button>
+    <button class="tg">学園</button>
+    <button class="tg">汉化</button>
+    <button class="tg">名作</button>
+  </div>
+
+  <!-- 收录便签(添加游戏) -->
+  <button class="add-pin" title="添加游戏"><b>+</b><span>夹一张<br>新照片</span></button>
+
+  <!-- 备份回形针(导出/恢复) -->
+  <div class="paperclips">
+    <button class="pclip" title="导出备份"><b>↓</b><span>导出</span></button>
+    <button class="pclip" title="恢复备份"><b>↑</b><span>恢复</span></button>
+  </div>
+</main>
+
+<!-- 底部相册条: 散落的小照片 = 库, 点击切换 -->
+<footer class="album">
+  <span class="album-l">— 我的相册 ・ 31 张 —</span>
+  <div class="scatter">
+    <button class="snap on" style="--r:-4deg"><div class="s-ph" style="background-image:url('https://t.vndb.org/cv/95/195095.jpg')"></div><span>otome</span></button>
+    <button class="snap" style="--r:3deg"><div class="s-ph" style="background-image:url('https://t.vndb.org/cv/26/15326.jpg')"></div><span>sakura</span></button>
+    <button class="snap" style="--r:-2deg"><div class="s-ph" style="background-image:url('https://t.vndb.org/cv/49/53449.jpg')"></div><span>9-nine</span></button>
+    <button class="snap" style="--r:5deg"><div class="s-ph" style="background-image:url('https://t.vndb.org/cv/63/58163.jpg')"></div><span>WA2</span></button>
+    <button class="snap" style="--r:-3deg"><div class="s-ph" style="background-image:url('https://t.vndb.org/cv/72/72.jpg')"></div><span>clannad</span></button>
+    <button class="snap" style="--r:2deg"><div class="s-ph" style="background-image:url('https://t.vndb.org/cv/73/3273.jpg')"></div><span>s;g</span></button>
+    <button class="snap" style="--r:-4deg"><div class="s-ph" style="background:linear-gradient(135deg,#f7d2de,#a4cae0)"></div><span>eustia</span></button>
+    <button class="snap" style="--r:4deg"><div class="s-ph" style="background:linear-gradient(135deg,#d6e7f3,#f7c8d8)"></div><span>grisaia</span></button>
+    <button class="snap" style="--r:-2deg"><div class="s-ph" style="background:linear-gradient(135deg,#fbd2de,#cfe2ee)"></div><span>subahibi</span></button>
+  </div>
+</footer>
+</body>
+</html>

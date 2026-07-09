@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { formatPlayTime } from "../utils";
 import type { LibraryController } from "../useLibrary";
 
@@ -23,12 +24,30 @@ export function EditorialLayout({ lib }: { lib: LibraryController }) {
     launch,
     exportBackup,
     importBackup,
-    openContextMenu
+    openContextMenu,
+    shelfRef
   } = lib;
+
+  const [turning, setTurning] = useState<{ dir: "prev" | "next"; targetId: string } | null>(null);
 
   const list = viewMode === "collection" ? collectionGames : filteredGames;
   const folio = selected ? Math.max(1, list.findIndex((g) => g.id === selected.id) + 1) : 0;
   const progressTag = selected?.status ?? "";
+
+  function flip(dir: "prev" | "next") {
+    if (!list.length || turning) return;
+    const idx = selected ? list.findIndex((g) => g.id === selected.id) : 0;
+    const target = dir === "prev"
+      ? list[(idx - 1 + list.length) % list.length]
+      : list[(idx + 1) % list.length];
+    if (!target || target.id === selected?.id) return;
+    setTurning({ dir, targetId: target.id });
+    setTimeout(() => setSelectedId(target.id), 480);
+  }
+
+  function finishFlip() {
+    setTurning(null);
+  }
 
   return (
     <div className="ed-root">
@@ -91,13 +110,47 @@ export function EditorialLayout({ lib }: { lib: LibraryController }) {
         </div>
       )}
 
-      {selected ? (
-        <main className="spread">
+      {viewMode === "collection" ? (
+        <main className="catalog">
+          <div className="cat-head">
+            <h2>收藏柜</h2>
+            <span>{collectionGames.length} 部</span>
+          </div>
+          {collectionGames.length > 0 ? (
+            <div className="cat-grid">
+              {collectionGames.map((game) => {
+                const poster = imageCache[game.coverPath] || imageCache[game.backgroundPath];
+                return (
+                  <button
+                    key={game.id}
+                    className={`cat-card ${game.id === selected?.id ? "on" : ""}`}
+                    onClick={() => { setSelectedId(game.id); setViewMode("library"); }}
+                    onContextMenu={(e) => openContextMenu(e, game)}
+                  >
+                    <div className="cat-art" style={poster ? { backgroundImage: `url("${poster}")` } : undefined}>
+                      {!poster && <div className="cat-empty">NO IMAGE</div>}
+                    </div>
+                    <div className="cat-info">
+                      <strong>{game.title}</strong>
+                      <em>{game.developer || game.status}</em>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="cat-empty-state">暂无匹配作品</div>
+          )}
+        </main>
+      ) : selected ? (
+        <main className={`spread ${turning ? `turn-${turning.dir}` : ""}`}>
           <div className="binding" />
+          {turning && <div className="turning-page" onAnimationEnd={finishFlip} />}
 
           <section className="page left">
             <div className="folio">p. {String(folio).padStart(3, "0")}</div>
             <div className="plate" style={{ backgroundImage: selectedImage ? `url("${selectedImage}")` : undefined }}>
+              {selectedImage && <div className="plate-img" style={{ backgroundImage: `url("${selectedImage}")` }} />}
               {!selectedImage && <div className="plate-empty">NO IMAGE</div>}
               <div className="plate-cap">封面故事 . COVER STORY</div>
             </div>
@@ -150,13 +203,17 @@ export function EditorialLayout({ lib }: { lib: LibraryController }) {
       )}
 
       <footer className="pager">
-        <button className="flip prev" title="上一部" onClick={() => {
-          if (!list.length) return;
-          const idx = selected ? list.findIndex((g) => g.id === selected.id) : 0;
-          const prev = list[(idx - 1 + list.length) % list.length];
-          if (prev) setSelectedId(prev.id);
-        }}>&#8249; 前页</button>
-        <div className="contents" role="list">
+        <button className="flip prev" title="上一部" onClick={() => flip("prev")}>&#8249; 前页</button>
+        <div
+          className="contents"
+          role="list"
+          ref={shelfRef}
+          onWheel={(event) => {
+            const element = shelfRef.current;
+            if (!element) return;
+            element.scrollLeft += event.deltaY || event.deltaX;
+          }}
+        >
           {list.map((game, i) => (
             <button
               key={game.id}
@@ -171,12 +228,7 @@ export function EditorialLayout({ lib }: { lib: LibraryController }) {
           ))}
           {list.length === 0 && <span className="toc-empty">没有匹配作品</span>}
         </div>
-        <button className="flip next" title="下一部" onClick={() => {
-          if (!list.length) return;
-          const idx = selected ? list.findIndex((g) => g.id === selected.id) : -1;
-          const next = list[(idx + 1) % list.length];
-          if (next) setSelectedId(next.id);
-        }}>后页 &#8250;</button>
+        <button className="flip next" title="下一部" onClick={() => flip("next")}>后页 &#8250;</button>
       </footer>
     </div>
   );

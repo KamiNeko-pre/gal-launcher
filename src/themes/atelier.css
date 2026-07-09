@@ -1,0 +1,756 @@
+/* ATELIER --- scoped [data-theme="atelier"] : 俯视拼贴台面 + 相册条切游戏 */
+[data-theme="atelier"]{
+  --desk-1:#efe3d4;
+  --desk-2:#e6d6c2;
+  --paper:#fffaf4;
+  --ink:#3a2a30;
+  --ink-soft:#7a6470;
+  --pink:#e89cb4;
+  --pink-soft:#fbd2de;
+  --blue:#a4cae0;
+  --blue-soft:#d6e7f3;
+  --red:#d94f5c;
+  --tape-p:rgba(247,200,216,.8);
+}
+
+[data-theme="atelier"] .at-root{
+  position:fixed;inset:0;
+  background:
+    radial-gradient(1000px 700px at 20% 10%,rgba(247,200,216,.4),transparent 55%),
+    radial-gradient(1000px 700px at 85% 90%,rgba(164,202,224,.4),transparent 55%),
+    linear-gradient(135deg,var(--desk-1),var(--desk-2));
+  color:var(--ink);
+  font-family:"Caveat","Shippori Mincho",serif;
+  overflow:hidden;
+  display:flex;flex-direction:column;
+}
+[data-theme="atelier"] .desk{
+  position:fixed;inset:0;z-index:0;pointer-events:none;
+  background-image:
+    radial-gradient(rgba(120,90,110,.06) 1px,transparent 1px),
+    repeating-linear-gradient(0deg,transparent 0,transparent 33px,rgba(120,90,110,.05) 34px);
+  background-size:6px 6px,100% 34px;
+}
+
+[data-theme="atelier"] .clipbar{
+  position:relative;z-index:5;
+  display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:24px;
+  padding:14px 40px;
+  background:rgba(255,250,244,.7);backdrop-filter:blur(8px);
+  border-bottom:2px dashed rgba(120,90,110,.3);
+}
+[data-theme="atelier"] .logo{display:flex;align-items:baseline;gap:12px}
+[data-theme="atelier"] .logo .stamp{display:inline-block;padding:4px 10px;background:linear-gradient(135deg,var(--pink),var(--blue));color:var(--paper);font-family:"DM Mono",monospace;font-weight:500;font-size:12px;letter-spacing:.2em;transform:rotate(-3deg);box-shadow:2px 2px 0 rgba(120,90,110,.18)}
+[data-theme="atelier"] .logo strong{font-family:"Caveat",cursive;font-weight:700;font-size:30px;color:var(--ink)}
+[data-theme="atelier"] .logo em{font-style:italic;font-family:"Caveat",cursive;font-size:16px;color:var(--ink-soft)}
+
+[data-theme="atelier"] .clipbar .search{justify-self:center;display:flex;align-items:center;gap:10px;width:min(420px,100%);padding:8px 14px;border:1.5px solid rgba(120,90,110,.5);background:rgba(255,255,255,.7)}
+[data-theme="atelier"] .clipbar .search span{font-family:"DM Mono",monospace;font-size:12px;color:var(--ink-soft)}
+[data-theme="atelier"] .clipbar .search input{flex:1;border:none;outline:none;background:transparent;font-family:"Caveat",cursive;font-size:20px;color:var(--ink)}
+[data-theme="atelier"] .clipbar .search input::placeholder{color:var(--ink-soft)}
+
+[data-theme="atelier"] .clips{display:flex;gap:8px}
+[data-theme="atelier"] .clip{
+  position:relative;padding:10px 16px 9px;min-height:46px;cursor:pointer;
+  background:var(--paper);border:1.5px solid rgba(120,90,110,.45);
+  font-family:"Caveat",cursive;font-weight:600;font-size:17px;color:var(--ink);
+  box-shadow:2px 3px 0 rgba(120,90,110,.16);transform:rotate(-1.5deg);
+}
+[data-theme="atelier"] .clip:nth-child(even){transform:rotate(1.5deg)}
+[data-theme="atelier"] .clip::before{content:"";position:absolute;top:-7px;left:50%;transform:translateX(-50%);width:14px;height:14px;border-radius:50%;background:#b9aeb6;box-shadow:inset 0 -1px 2px rgba(0,0,0,.3)}
+[data-theme="atelier"] .clip:hover{background:#fff}
+[data-theme="atelier"] .clip.on{background:linear-gradient(135deg,var(--pink-soft),var(--blue-soft));border-color:var(--pink)}
+
+[data-theme="atelier"] .board{position:relative;z-index:1;flex:1;min-height:0}
+
+[data-theme="atelier"] .hero-polaroid{
+  position:absolute;top:48px;left:64px;width:540px;
+  display:grid;grid-template-columns:230px 1fr;gap:22px;
+  padding:20px 22px 26px;
+  background:var(--paper);
+  transform:rotate(var(--rot));
+  box-shadow:10px 14px 30px rgba(120,90,110,.32),0 2px 0 rgba(0,0,0,.04);
+}
+[data-theme="atelier"] .hero-polaroid.empty{grid-template-columns:1fr;width:440px}
+[data-theme="atelier"] .washi{position:absolute;height:30px;background:var(--tape-p);background-image:repeating-linear-gradient(135deg,rgba(255,255,255,.45) 0 4px,transparent 4px 9px);box-shadow:0 3px 6px rgba(120,90,110,.2)}
+[data-theme="atelier"] .washi.top{top:-14px;left:50%;transform:translateX(-50%) rotate(-2deg);width:180px}
+[data-theme="atelier"] .hero-polaroid .ph{position:relative;width:100%;aspect-ratio:158/211;background:#f0dde6 center/cover no-repeat;box-shadow:inset 0 0 0 1px rgba(120,90,110,.2);filter:saturate(1) contrast(1.02)}
+[data-theme="atelier"] .ph-empty{position:absolute;inset:0;display:grid;place-items:center;font-family:"Caveat",cursive;font-size:20px;color:var(--ink-soft)}
+[data-theme="atelier"] .hand{display:flex;flex-direction:column;min-width:0}
+[data-theme="atelier"] .hand .num{font-family:"DM Mono",monospace;font-size:11px;letter-spacing:.16em;color:var(--ink-soft);text-transform:uppercase}
+[data-theme="atelier"] .hand h1{font-family:"Shippori Mincho",serif;font-weight:800;font-size:28px;line-height:1.08;color:var(--ink);margin-top:6px}
+[data-theme="atelier"] .hand .kana{font-family:"Caveat",cursive;font-style:italic;font-weight:600;font-size:20px;color:var(--ink-soft);margin-top:4px}
+[data-theme="atelier"] .hand .memo{font-family:"Caveat",cursive;font-size:19px;line-height:1.38;color:var(--ink);margin-top:10px;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
+[data-theme="atelier"] .hand .rate{margin-top:auto;display:flex;align-items:baseline;gap:4px;font-size:18px;color:var(--pink);padding-top:10px}
+[data-theme="atelier"] .hand .rate em{font-style:italic;font-family:"Caveat",cursive;font-size:16px;color:var(--ink-soft)}
+
+[data-theme="atelier"] .play-stamp{
+  position:absolute;right:-26px;bottom:-22px;
+  width:148px;height:148px;border-radius:50%;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
+  background:radial-gradient(circle at 40% 35%,#ec6b76,var(--red) 70%);
+  color:#fff;cursor:pointer;transform:rotate(-9deg);
+  border:3px double rgba(255,255,255,.7);
+  box-shadow:0 0 0 4px rgba(217,79,92,.22),0 12px 26px rgba(180,50,62,.5);
+  transition:.15s ease;
+}
+[data-theme="atelier"] .play-stamp .ink{position:absolute;inset:0;border-radius:50%;background:radial-gradient(circle,transparent 60%,rgba(180,50,62,.18) 100%);mix-blend-mode:multiply}
+[data-theme="atelier"] .play-stamp .pt{font-family:"Shippori Mincho",serif;font-weight:800;font-size:24px;letter-spacing:.02em;text-shadow:0 1px 2px rgba(120,20,30,.4)}
+[data-theme="atelier"] .play-stamp .ps{font-family:"Caveat",cursive;font-weight:700;font-size:15px;letter-spacing:.08em;opacity:.95}
+[data-theme="atelier"] .play-stamp:hover{transform:rotate(-3deg) scale(1.05);box-shadow:0 0 0 6px rgba(217,79,92,.28),0 16px 32px rgba(180,50,62,.6)}
+
+[data-theme="atelier"] .note{position:absolute;width:172px;padding:16px 16px 14px;transform:rotate(var(--rot));box-shadow:6px 8px 14px rgba(120,90,110,.24);font-family:"Caveat",cursive;text-align:left;cursor:default;border:0}
+[data-theme="atelier"] .ynote{background:#fff0bf;border:1px solid rgba(120,90,110,.2);top:96px;right:56px}
+[data-theme="atelier"] .info-note{background:var(--blue-soft);border:1px solid rgba(120,90,110,.2);top:268px;right:56px;cursor:pointer}
+[data-theme="atelier"] .note strong{display:block;font-family:"DM Mono",monospace;font-weight:500;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--ink-soft);margin-bottom:6px}
+[data-theme="atelier"] .note p{font-family:"Caveat",cursive;font-size:22px;line-height:1.18;color:var(--ink);font-weight:600}
+[data-theme="atelier"] .note em{display:block;margin-top:6px;font-style:italic;font-size:15px;color:var(--ink)}
+[data-theme="atelier"] .info-note:hover{transform:rotate(0) scale(1.03)}
+
+[data-theme="atelier"] .ticket{
+  position:absolute;width:200px;padding:14px 16px;top:440px;right:56px;
+  background:var(--paper);transform:rotate(var(--rot));
+  border:1px dashed rgba(120,90,110,.4);
+  box-shadow:6px 8px 14px rgba(120,90,110,.22);
+  font-family:"Caveat",cursive;
+}
+[data-theme="atelier"] .ticket > span{font-family:"DM Mono",monospace;font-size:10px;letter-spacing:.2em;color:var(--ink-soft);text-transform:uppercase}
+[data-theme="atelier"] .ticket .trow{display:flex;align-items:baseline;gap:8px;margin-top:6px;padding-top:6px;border-top:1px dotted rgba(120,90,110,.3)}
+[data-theme="atelier"] .ticket .trow b{font-family:"Shippori Mincho",serif;font-weight:800;font-size:20px;color:var(--ink)}
+[data-theme="atelier"] .ticket .trow i{font-style:normal;font-family:"Caveat",cursive;font-size:16px;color:var(--ink-soft)}
+
+[data-theme="atelier"] .tagstrip{
+  position:absolute;left:72px;bottom:36px;
+  display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+  padding:10px 16px;background:rgba(255,250,244,.78);
+  border:1.5px solid rgba(120,90,110,.3);transform:rotate(var(--rot));
+  box-shadow:5px 6px 12px rgba(120,90,110,.18);max-width:420px;
+}
+[data-theme="atelier"] .tagstrip .tl{font-family:"Caveat",cursive;font-style:italic;font-size:19px;color:var(--ink-soft);margin-right:4px}
+[data-theme="atelier"] .tg{padding:5px 13px;border:1px solid rgba(120,90,110,.4);background:rgba(255,255,255,.6);border-radius:999px;font-family:"Shippori Mincho",serif;font-weight:600;font-size:13px;color:var(--ink);cursor:pointer}
+[data-theme="atelier"] .tg:hover{background:#fff;border-color:var(--pink)}
+[data-theme="atelier"] .tg.on{background:var(--pink);color:var(--paper);border-color:rgba(255,255,255,.6)}
+
+[data-theme="atelier"] .add-pin{
+  position:absolute;left:464px;bottom:54px;
+  width:118px;height:118px;border-radius:6px;cursor:pointer;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
+  background:linear-gradient(135deg,var(--pink-soft),var(--blue-soft));
+  border:2px dashed rgba(120,90,110,.45);transform:rotate(4deg);
+  box-shadow:5px 7px 14px rgba(120,90,110,.22);font-family:"Caveat",cursive;color:var(--ink);
+}
+[data-theme="atelier"] .add-pin b{font-family:"Shippori Mincho",serif;font-weight:800;font-size:30px;line-height:1}
+[data-theme="atelier"] .add-pin span{font-family:"Caveat",cursive;font-weight:600;font-size:16px;text-align:center;line-height:1.2}
+[data-theme="atelier"] .add-pin:hover{transform:rotate(0) scale(1.04)}
+
+[data-theme="atelier"] .paperclips{position:absolute;right:56px;top:24px;display:flex;flex-direction:row;gap:10px}
+[data-theme="atelier"] .pclip{
+  display:flex;align-items:center;gap:8px;padding:9px 14px;cursor:pointer;
+  background:var(--paper);border:1.5px solid rgba(120,90,110,.4);border-radius:999px;
+  font-family:"Caveat",cursive;font-weight:600;font-size:16px;color:var(--ink);
+  box-shadow:3px 4px 8px rgba(120,90,110,.18);transform:rotate(-2deg);
+}
+[data-theme="atelier"] .pclip:nth-child(2){transform:rotate(2deg)}
+[data-theme="atelier"] .pclip b{font-family:"Shippori Mincho",serif;font-weight:800;font-size:17px}
+[data-theme="atelier"] .pclip:hover{background:#fff;border-color:var(--blue)}
+
+[data-theme="atelier"] .album{
+  position:relative;z-index:2;
+  padding:14px 40px 18px;
+  background:rgba(255,250,244,.72);backdrop-filter:blur(8px);
+  border-top:2px dashed rgba(120,90,110,.3);
+}
+[data-theme="atelier"] .album-l{display:block;text-align:center;font-family:"Caveat",cursive;font-style:italic;font-size:18px;color:var(--ink-soft);margin-bottom:6px}
+[data-theme="atelier"] .scatter{display:flex;gap:18px;overflow-x:auto;padding:10px 4px 6px;align-items:flex-start}
+[data-theme="atelier"] .snap{flex:0 0 auto;padding:6px 6px 4px;background:var(--paper);transform:rotate(var(--r));box-shadow:4px 6px 12px rgba(120,90,110,.24);cursor:pointer;transition:.2s ease;border:0}
+[data-theme="atelier"] .s-ph{width:92px;aspect-ratio:158/211;background:#f0dde6 center/cover no-repeat;box-shadow:inset 0 0 0 1px rgba(120,90,110,.18)}
+[data-theme="atelier"] .snap span{display:block;text-align:center;font-family:"Caveat",cursive;font-weight:600;font-size:15px;color:var(--ink);margin-top:3px;max-width:92px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+[data-theme="atelier"] .snap:hover{transform:rotate(0) translateY(-4px);box-shadow:6px 10px 18px rgba(120,90,110,.3)}
+[data-theme="atelier"] .snap.on{background:linear-gradient(135deg,var(--pink-soft),var(--blue-soft));transform:rotate(0) translateY(-6px);box-shadow:0 0 0 2px var(--pink),6px 10px 18px rgba(232,156,180,.4)}
+[data-theme="atelier"] .scatter-empty{font-family:"Caveat",cursive;font-size:18px;color:var(--ink-soft);align-self:center;padding:20px}
+
+[data-theme="atelier"] .catalog-board{display:flex;flex-direction:column;padding:24px 40px;overflow:hidden}
+[data-theme="atelier"] .catalog-board .cat-head{display:flex;align-items:baseline;gap:12px;margin-bottom:14px}
+[data-theme="atelier"] .catalog-board .cat-head h2{font-family:"Shippori Mincho",serif;font-weight:800;font-size:26px;color:var(--ink)}
+[data-theme="atelier"] .catalog-board .cat-head span{font-family:"Caveat",cursive;font-size:20px;color:var(--ink-soft)}
+[data-theme="atelier"] .catalog-board .cat-grid{flex:1;min-height:0;overflow-y:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:22px;padding:8px 6px 20px}
+[data-theme="atelier"] .catalog-board .cat-card{padding:7px 7px 5px;background:var(--paper);transform:rotate(var(--r));box-shadow:5px 7px 14px rgba(120,90,110,.24);cursor:pointer;border:0;transition:.2s ease}
+[data-theme="atelier"] .catalog-board .cat-card:hover{transform:rotate(0) translateY(-4px)}
+[data-theme="atelier"] .catalog-board .cat-card.on{background:linear-gradient(135deg,var(--pink-soft),var(--blue-soft));transform:rotate(0) translateY(-6px);box-shadow:0 0 0 2px var(--pink),6px 10px 18px rgba(232,156,180,.4)}
+[data-theme="atelier"] .cat-ph{position:relative;width:100%;aspect-ratio:158/211;background:#f0dde6 center/cover no-repeat;box-shadow:inset 0 0 0 1px rgba(120,90,110,.18)}
+[data-theme="atelier"] .cat-empty{position:absolute;inset:0;display:grid;place-items:center;font-family:"Caveat",cursive;font-size:16px;color:var(--ink-soft)}
+[data-theme="atelier"] .catalog-board .cat-card span{display:block;text-align:center;font-family:"Caveat",cursive;font-weight:600;font-size:16px;color:var(--ink);margin-top:4px;line-height:1.1;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+[data-theme="atelier"] .cat-empty-state{flex:1;display:grid;place-items:center;font-family:"Caveat",cursive;font-size:22px;color:var(--ink-soft)}
+
+/* ---- SideSheet : 暖纸手账风 (浅底, 防暗色变量泄漏) ---- */
+[data-theme="atelier"] .side-sheet{background:linear-gradient(165deg,#fffaf4f7,#f6ebe0f2);backdrop-filter:blur(10px);border-left:2px solid var(--pink);font-family:"Caveat","Shippori Mincho",serif}
+[data-theme="atelier"] .side-sheet,
+[data-theme="atelier"] .side-sheet *{text-shadow:none !important}
+[data-theme="atelier"] .side-sheet,
+[data-theme="atelier"] .side-sheet p,
+[data-theme="atelier"] .side-sheet span,
+[data-theme="atelier"] .side-sheet small,
+[data-theme="atelier"] .side-sheet strong,
+[data-theme="atelier"] .side-sheet summary,
+[data-theme="atelier"] .side-sheet dt,
+[data-theme="atelier"] .side-sheet dd,
+[data-theme="atelier"] .side-sheet button{color:var(--ink)}
+[data-theme="atelier"] .side-sheet .sheet-close{color:var(--ink);border-color:rgba(120,90,110,.4)}
+[data-theme="atelier"] .side-sheet .sheet-close:hover{background:var(--red);color:#fff}
+[data-theme="atelier"] .side-sheet .sheet-kicker{font-family:"DM Mono",monospace;font-size:11px;letter-spacing:.16em;color:var(--ink-soft)}
+[data-theme="atelier"] .side-sheet h1{font-family:"Shippori Mincho",serif;font-weight:800;color:var(--ink)}
+[data-theme="atelier"] .side-sheet .sheet-original{font-family:"Caveat",cursive;font-size:20px;color:var(--ink-soft)}
+[data-theme="atelier"] .side-sheet .status-pill{border:1px solid rgba(120,90,110,.4);background:rgba(255,255,255,.6);color:var(--ink);font-family:"Shippori Mincho",serif}
+[data-theme="atelier"] .side-sheet .status-pill.active{background:var(--pink);border-color:var(--pink);color:var(--paper)}
+[data-theme="atelier"] .side-sheet .status-pill.done{background:var(--blue);border-color:var(--blue);color:var(--ink)}
+[data-theme="atelier"] .side-sheet .playing-pill{background:var(--red);color:#fff}
+[data-theme="atelier"] .side-sheet .sheet-section{background:rgba(255,255,255,.55);border:1px solid rgba(120,90,110,.18)}
+[data-theme="atelier"] .side-sheet .toolbar-btn{border:1px solid rgba(120,90,110,.4);background:rgba(255,255,255,.6);color:var(--ink)}
+[data-theme="atelier"] .side-sheet .toolbar-btn:hover{background:var(--blue);color:var(--ink)}
+[data-theme="atelier"] .side-sheet .toolbar-btn.danger{border-color:var(--red);color:var(--red)}
+[data-theme="atelier"] .side-sheet .toolbar-btn.danger:hover{background:var(--red);color:#fff}
+[data-theme="atelier"] .side-sheet .playtime-hero strong,
+[data-theme="atelier"] .side-sheet .playtime-details div strong{font-family:"Shippori Mincho",serif;color:var(--ink)}
+[data-theme="atelier"] .side-sheet .playtime-hero span,
+[data-theme="atelier"] .side-sheet .playtime-details div span{color:var(--ink-soft)}
+[data-theme="atelier"] .side-sheet .completeness-fill{background:linear-gradient(90deg,var(--pink),var(--blue))}
+[data-theme="atelier"] .side-sheet .completeness-bar{background:rgba(120,90,110,.18)}
+[data-theme="atelier"] .side-sheet .sheet-description{font-family:"Shippori Mincho",serif;font-size:14px;line-height:1.75;color:var(--ink)}
+[data-theme="atelier"] .side-sheet .sheet-path{font-family:"DM Mono",monospace;color:var(--ink-soft)}
+[data-theme="atelier"] .side-sheet .section-heading{font-family:"DM Mono",monospace;font-size:11px;letter-spacing:.16em;color:var(--ink-soft)}
+[data-theme="atelier"] .side-sheet .sheet-hint,
+[data-theme="atelier"] .side-sheet .sheet-empty{color:var(--ink-soft)}
+
+/* 横版主视觉优化：把散落手账收束成横向照片 + 资料便签簇 */
+[data-theme="atelier"] .board{
+  display:grid;
+  grid-template-columns:minmax(620px,1fr) 300px;
+  gap:28px;
+  padding:36px 58px 22px;
+}
+[data-theme="atelier"] .hero-polaroid{
+  position:relative;
+  top:auto;
+  left:auto;
+  align-self:center;
+  justify-self:center;
+  width:min(880px,100%);
+  display:grid;
+  grid-template-columns:minmax(360px,1.18fr) minmax(240px,.82fr);
+  gap:24px;
+  padding:22px 24px 28px;
+  transform:rotate(-.7deg);
+}
+[data-theme="atelier"] .hero-polaroid .ph{
+  aspect-ratio:16/9;
+  background-size:contain;
+  background-color:#f2e0e8;
+  background-position:center;
+  background-repeat:no-repeat;
+  z-index:1;
+}
+[data-theme="atelier"] .hero-polaroid .ph::before{
+  content:none;
+}
+[data-theme="atelier"] .hand h1{
+  font-size:clamp(28px,2.5vw,40px);
+  line-height:1.12;
+}
+[data-theme="atelier"] .hand .memo{
+  font-family:"Shippori Mincho","Microsoft YaHei UI",serif;
+  font-size:15px;
+  line-height:1.7;
+  -webkit-line-clamp:5;
+}
+[data-theme="atelier"] .play-stamp{
+  right:24px;
+  bottom:-50px;
+  width:132px;
+  height:132px;
+}
+[data-theme="atelier"] .note,
+[data-theme="atelier"] .ticket,
+[data-theme="atelier"] .paperclips{
+  position:relative;
+  top:auto;
+  right:auto;
+  left:auto;
+  bottom:auto;
+}
+[data-theme="atelier"] .note{
+  width:100%;
+}
+[data-theme="atelier"] .ynote{
+  grid-column:2;
+  grid-row:1;
+  align-self:start;
+  margin-top:44px;
+}
+[data-theme="atelier"] .info-note{
+  grid-column:2;
+  grid-row:1;
+  align-self:center;
+}
+[data-theme="atelier"] .ticket{
+  grid-column:2;
+  grid-row:1;
+  align-self:end;
+  width:100%;
+  margin-bottom:34px;
+}
+[data-theme="atelier"] .paperclips{
+  grid-column:2;
+  grid-row:1;
+  align-self:start;
+  justify-self:end;
+  margin-top:0;
+}
+[data-theme="atelier"] .tagstrip{
+  left:58px;
+  bottom:20px;
+  max-width:min(640px,52vw);
+}
+[data-theme="atelier"] .add-pin{
+  left:auto;
+  right:360px;
+  bottom:28px;
+  width:104px;
+  height:104px;
+}
+[data-theme="atelier"] .album{
+  padding:10px 40px 14px;
+}
+[data-theme="atelier"] .scatter{
+  gap:14px;
+}
+[data-theme="atelier"] .s-ph{
+  width:86px;
+}
+[data-theme="atelier"] .catalog-board{
+  display:flex;
+  grid-template-columns:none;
+  gap:0;
+  padding:24px 40px;
+}
+
+/* 二次比例校准：主卡更像横向手账页，印章退半级，右侧便签靠近内容 */
+[data-theme="atelier"] .board{
+  grid-template-columns:minmax(760px,1fr) 320px;
+  gap:22px;
+  padding:42px 64px 18px;
+  align-items:center;
+}
+[data-theme="atelier"] .hero-polaroid{
+  width:min(1040px,100%);
+  grid-template-columns:minmax(520px,1.35fr) minmax(260px,.65fr);
+  gap:26px;
+  padding:22px 24px 24px;
+}
+[data-theme="atelier"] .hero-polaroid .ph{
+  min-height:300px;
+  background-size:cover;
+}
+[data-theme="atelier"] .hand h1{
+  font-size:34px;
+}
+[data-theme="atelier"] .hand .kana{
+  font-size:18px;
+}
+[data-theme="atelier"] .hand .memo{
+  font-size:14px;
+  line-height:1.62;
+  -webkit-line-clamp:6;
+}
+[data-theme="atelier"] .play-stamp{
+  right:-18px;
+  bottom:-36px;
+  width:116px;
+  height:116px;
+}
+[data-theme="atelier"] .play-stamp .pt{
+  font-size:21px;
+}
+[data-theme="atelier"] .play-stamp .ps{
+  font-size:13px;
+}
+[data-theme="atelier"] .ynote{
+  margin-top:52px;
+}
+[data-theme="atelier"] .info-note{
+  margin-top:4px;
+}
+[data-theme="atelier"] .ticket{
+  margin-bottom:46px;
+}
+[data-theme="atelier"] .note{
+  padding:14px 15px 13px;
+}
+[data-theme="atelier"] .note p{
+  font-size:20px;
+}
+[data-theme="atelier"] .tagstrip{
+  left:64px;
+  bottom:16px;
+  max-width:min(760px,58vw);
+}
+[data-theme="atelier"] .add-pin{
+  right:342px;
+  bottom:22px;
+  width:94px;
+  height:94px;
+}
+
+/* Desk composition pass: make the feature sheet intentional instead of small in empty space. */
+[data-theme="atelier"] .board{
+  grid-template-columns:minmax(900px,1fr) 300px;
+  gap:20px;
+  padding:30px 56px 14px;
+}
+[data-theme="atelier"] .board::before{
+  content:"";
+  position:absolute;
+  z-index:-1;
+  left:40px;
+  right:350px;
+  top:50%;
+  height:220px;
+  transform:translateY(-50%) rotate(-1deg);
+  border-radius:999px;
+  background:radial-gradient(closest-side,rgba(120,90,110,.13),transparent 72%);
+  filter:blur(8px);
+}
+[data-theme="atelier"] .hero-polaroid{
+  width:min(1160px,100%);
+  grid-template-columns:minmax(610px,1.45fr) minmax(280px,.55fr);
+  gap:28px;
+  padding:24px 28px 26px;
+}
+[data-theme="atelier"] .hero-polaroid::after{
+  content:"";
+  position:absolute;
+  left:28px;
+  right:28px;
+  bottom:18px;
+  border-bottom:1px dotted rgba(120,90,110,.22);
+}
+[data-theme="atelier"] .hero-polaroid .ph{
+  min-height:350px;
+}
+[data-theme="atelier"] .hand{
+  padding-top:6px;
+}
+[data-theme="atelier"] .hand h1{
+  font-size:clamp(36px,2.75vw,48px);
+  line-height:1.06;
+  display:-webkit-box;
+  -webkit-line-clamp:2;
+  -webkit-box-orient:vertical;
+  overflow:hidden;
+}
+[data-theme="atelier"] .hand .kana{
+  font-size:20px;
+}
+[data-theme="atelier"] .hand .memo{
+  font-size:15px;
+  line-height:1.68;
+  -webkit-line-clamp:5;
+}
+[data-theme="atelier"] .play-stamp{
+  right:-24px;
+  bottom:-34px;
+  width:124px;
+  height:124px;
+}
+[data-theme="atelier"] .ynote{
+  margin-top:40px;
+}
+[data-theme="atelier"] .ticket{
+  margin-bottom:36px;
+}
+[data-theme="atelier"] .add-pin{
+  right:322px;
+  bottom:20px;
+}
+
+/* Collection mode should behave like the bottom album strip, not a vertical cabinet. */
+[data-theme="atelier"] .catalog-board{
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  padding:34px 52px 24px;
+}
+[data-theme="atelier"] .catalog-board .cat-head{
+  align-self:center;
+  margin-bottom:28px;
+}
+[data-theme="atelier"] .catalog-board .cat-head h2{
+  font-size:34px;
+}
+[data-theme="atelier"] .catalog-board .cat-grid{
+  flex:0 0 auto;
+  min-height:0;
+  height:300px;
+  display:flex;
+  flex-direction:row;
+  align-items:flex-start;
+  gap:24px;
+  overflow-x:auto;
+  overflow-y:hidden;
+  padding:18px 8px 26px;
+}
+[data-theme="atelier"] .catalog-board .cat-card{
+  flex:0 0 146px;
+  padding:8px 8px 6px;
+}
+[data-theme="atelier"] .cat-ph{
+  width:130px;
+  aspect-ratio:158/211;
+  background-size:cover;
+}
+[data-theme="atelier"] .catalog-board .cat-card span{
+  max-width:130px;
+}
+
+/* Collection page final: use the same spacious shelf directory language as Lumen. */
+[data-theme="atelier"] .catalog-board{
+  display:flex;
+  flex-direction:column;
+  justify-content:flex-start;
+  padding:58px 96px 34px;
+  overflow:hidden;
+}
+[data-theme="atelier"] .catalog-board .cat-head{
+  width:min(1760px,100%);
+  align-self:center;
+  display:flex;
+  align-items:baseline;
+  justify-content:space-between;
+  margin:0 0 34px;
+}
+[data-theme="atelier"] .catalog-board .cat-head h2{
+  font-family:"Shippori Mincho",serif;
+  font-size:46px;
+  line-height:1;
+}
+[data-theme="atelier"] .catalog-board .cat-head span{
+  font-family:"DM Mono",monospace;
+  font-size:14px;
+  letter-spacing:.18em;
+  color:var(--ink-soft);
+}
+[data-theme="atelier"] .catalog-board .cat-grid{
+  width:min(1760px,100%);
+  align-self:center;
+  flex:1 1 auto;
+  height:auto;
+  min-height:0;
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(200px,1fr));
+  align-content:start;
+  gap:30px 28px;
+  overflow-y:auto;
+  overflow-x:hidden;
+  padding:4px 10px 34px;
+}
+[data-theme="atelier"] .catalog-board .cat-card{
+  width:auto;
+  min-width:0;
+  flex:initial;
+  padding:14px 14px 16px;
+  border-radius:20px;
+  background:rgba(255,250,244,.9);
+  transform:none;
+  box-shadow:0 18px 42px rgba(120,90,110,.14);
+}
+[data-theme="atelier"] .cat-ph{
+  width:100%;
+  aspect-ratio:158/211;
+  border-radius:14px;
+  overflow:hidden;
+}
+[data-theme="atelier"] .catalog-board .cat-card span{
+  max-width:100%;
+  text-align:left;
+  font-family:"Shippori Mincho","Microsoft YaHei UI",serif;
+  font-size:17px;
+  font-weight:800;
+  line-height:1.18;
+}
+
+/* Final Atelier collection: keep it as a scrapbook, matching the album strip below. */
+[data-theme="atelier"] .catalog-board{
+  display:flex;
+  flex-direction:column;
+  justify-content:flex-start;
+  padding:44px 70px 24px;
+  overflow:hidden;
+}
+[data-theme="atelier"] .catalog-board .cat-head{
+  align-self:flex-start;
+  width:auto;
+  display:flex;
+  align-items:baseline;
+  justify-content:flex-start;
+  gap:18px;
+  margin:0 0 40px 18px;
+  transform:rotate(-1deg);
+}
+[data-theme="atelier"] .catalog-board .cat-head h2{
+  font-family:"Shippori Mincho",serif;
+  font-size:48px;
+  line-height:1;
+  color:var(--ink);
+}
+[data-theme="atelier"] .catalog-board .cat-head span{
+  font-family:"Caveat",cursive;
+  font-size:22px;
+  letter-spacing:.04em;
+  color:var(--ink-soft);
+}
+[data-theme="atelier"] .catalog-board .cat-grid{
+  width:100%;
+  align-self:stretch;
+  flex:1 1 auto;
+  height:auto;
+  min-height:0;
+  display:grid;
+  grid-auto-flow:column;
+  grid-template-rows:repeat(2,minmax(0,1fr));
+  grid-auto-columns:178px;
+  grid-template-columns:none;
+  align-content:start;
+  align-items:start;
+  gap:34px 28px;
+  overflow-x:auto;
+  overflow-y:hidden;
+  overscroll-behavior-x:contain;
+  padding:6px 18px 28px;
+}
+[data-theme="atelier"] .catalog-board .cat-card{
+  width:178px;
+  min-width:0;
+  padding:8px 8px 9px;
+  border:0;
+  border-radius:0;
+  background:var(--paper);
+  transform:rotate(var(--r));
+  box-shadow:5px 8px 18px rgba(120,90,110,.22);
+  transition:.2s ease;
+}
+[data-theme="atelier"] .catalog-board .cat-card:hover{
+  transform:rotate(0) translateY(-4px);
+}
+[data-theme="atelier"] .catalog-board .cat-card.on{
+  background:linear-gradient(135deg,var(--pink-soft),var(--blue-soft));
+  transform:rotate(0) translateY(-6px);
+  box-shadow:0 0 0 2px var(--pink),7px 12px 22px rgba(232,156,180,.36);
+}
+[data-theme="atelier"] .cat-ph{
+  width:162px;
+  aspect-ratio:158/211;
+  border-radius:0;
+  background-size:cover;
+  box-shadow:inset 0 0 0 1px rgba(120,90,110,.18);
+}
+[data-theme="atelier"] .catalog-board .cat-card span{
+  max-width:162px;
+  margin-top:5px;
+  text-align:center;
+  font-family:"Caveat","Shippori Mincho",cursive;
+  font-size:18px;
+  font-weight:700;
+  line-height:1.12;
+  color:var(--ink);
+}
+
+/* Final Atelier collection: vertical scrapbook shelf, matching the theme and keeping titles visible. */
+[data-theme="atelier"] .catalog-board{
+  display:flex;
+  flex-direction:column;
+  justify-content:flex-start;
+  min-height:0;
+  padding:46px 72px 26px;
+  overflow:hidden;
+}
+[data-theme="atelier"] .catalog-board .cat-head{
+  align-self:flex-start;
+  width:auto;
+  display:flex;
+  align-items:baseline;
+  justify-content:flex-start;
+  gap:18px;
+  margin:0 0 38px 22px;
+  transform:rotate(-1deg);
+}
+[data-theme="atelier"] .catalog-board .cat-head h2{
+  font-family:"Shippori Mincho","Microsoft YaHei UI",serif;
+  font-size:48px;
+  line-height:1;
+  color:var(--ink);
+}
+[data-theme="atelier"] .catalog-board .cat-head span{
+  font-family:"Caveat","Microsoft YaHei UI",cursive;
+  font-size:22px;
+  letter-spacing:.04em;
+  color:var(--ink-soft);
+}
+[data-theme="atelier"] .catalog-board .cat-grid{
+  width:100%;
+  flex:1 1 auto;
+  height:auto;
+  min-height:0;
+  display:grid;
+  grid-auto-flow:row;
+  grid-template-columns:repeat(auto-fill,minmax(168px,1fr));
+  grid-template-rows:none;
+  grid-auto-columns:initial;
+  align-content:start;
+  align-items:start;
+  gap:34px 30px;
+  overflow-y:auto;
+  overflow-x:hidden;
+  overscroll-behavior:contain;
+  padding:8px 22px 52px;
+}
+[data-theme="atelier"] .catalog-board .cat-card{
+  width:auto;
+  min-width:0;
+  height:auto;
+  padding:8px 8px 12px;
+  border:0;
+  border-radius:0;
+  background:var(--paper);
+  transform:rotate(var(--r));
+  box-shadow:5px 8px 18px rgba(120,90,110,.2);
+}
+[data-theme="atelier"] .catalog-board .cat-card:hover{
+  transform:rotate(0) translateY(-4px);
+}
+[data-theme="atelier"] .catalog-board .cat-card.on{
+  background:linear-gradient(135deg,var(--pink-soft),var(--blue-soft));
+  transform:rotate(0) translateY(-5px);
+  box-shadow:0 0 0 2px var(--pink),7px 12px 22px rgba(232,156,180,.34);
+}
+[data-theme="atelier"] .cat-ph{
+  width:100%;
+  aspect-ratio:158/211;
+  border-radius:0;
+  background-size:cover;
+  box-shadow:inset 0 0 0 1px rgba(120,90,110,.16);
+}
+[data-theme="atelier"] .catalog-board .cat-card span{
+  display:-webkit-box;
+  max-width:100%;
+  min-height:2.25em;
+  margin-top:8px;
+  overflow:hidden;
+  -webkit-line-clamp:2;
+  -webkit-box-orient:vertical;
+  text-align:center;
+  text-overflow:ellipsis;
+  font-family:"Caveat","Shippori Mincho","Microsoft YaHei UI",cursive;
+  font-size:19px;
+  font-weight:700;
+  line-height:1.12;
+  color:var(--ink);
+}

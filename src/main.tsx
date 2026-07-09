@@ -16,8 +16,16 @@ import { useLibrary } from "./useLibrary";
 import { SideSheet } from "./components/SideSheet";
 import { CinemaLayout } from "./layouts/CinemaLayout";
 import { EditorialLayout } from "./layouts/EditorialLayout";
+import { ArcadeLayout } from "./layouts/ArcadeLayout";
+import { AtelierLayout } from "./layouts/AtelierLayout";
+import { AuroraLayout } from "./layouts/AuroraLayout";
+import { MonoLuxLayout } from "./layouts/MonoLuxLayout";
 import "./styles.css";
 import "./themes/editorial.css";
+import "./themes/arcade.css";
+import "./themes/atelier.css";
+import "./themes/aurora.css";
+import "./themes/monolux.css";
 
 const sourceColors: Record<string, string> = {
   "Steam": "#1a9fff",
@@ -34,7 +42,11 @@ const sourceColors: Record<string, string> = {
 
 const layouts: Partial<Record<string, typeof CinemaLayout>> = {
   cinema: CinemaLayout,
-  editorial: EditorialLayout
+  editorial: EditorialLayout,
+  arcade: ArcadeLayout,
+  atelier: AtelierLayout,
+  aurora: AuroraLayout,
+  monolux: MonoLuxLayout
 };
 
 function App() {

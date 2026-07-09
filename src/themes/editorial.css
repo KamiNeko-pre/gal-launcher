@@ -126,14 +126,28 @@
 
 [data-theme="editorial"] .page.left{display:flex;flex-direction:column}
 [data-theme="editorial"] .plate{
-  flex:1;min-height:0;position:relative;
+  flex:1;min-height:0;position:relative;overflow:hidden;
   background:#2a2018 center/cover no-repeat;
   border:1px solid var(--rule);
-  filter:saturate(.9) contrast(1.04);
+}
+[data-theme="editorial"] .plate::before{
+  content:"";position:absolute;inset:0;
+  background:inherit;
+  filter:blur(26px) saturate(1.1) brightness(.72);
+  transform:scale(1.18);
+}
+[data-theme="editorial"] .plate::after{
+  content:"";position:absolute;inset:0;
+  background:linear-gradient(180deg,rgba(29,20,16,.18),rgba(29,20,16,.34));
+}
+[data-theme="editorial"] .plate-img{
+  position:absolute;inset:0;z-index:1;
+  background:center/contain no-repeat;
+  filter:saturate(.96) contrast(1.04);
 }
 [data-theme="editorial"] .plate-empty{position:absolute;inset:0;display:grid;place-items:center;font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:.3em;color:rgba(243,234,216,.5)}
 [data-theme="editorial"] .plate-cap{
-  position:absolute;top:0;left:0;
+  position:absolute;top:0;left:0;z-index:2;
   padding:6px 14px;background:var(--ink);color:var(--paper);
   font-family:"Inter Tight",sans-serif;font-size:10px;letter-spacing:.24em;text-transform:uppercase;
 }
@@ -206,3 +220,298 @@
 [data-theme="editorial"] .toc.on .tn{color:var(--paper-3)}
 [data-theme="editorial"] .toc.on .tt{color:var(--paper)}
 [data-theme="editorial"] .toc-empty{font-family:"Fraunces",serif;font-style:italic;color:var(--ink-soft);padding:8px 14px}
+
+/* ---- 3D 翻页动画：单张纸从装订线翻过去 ---- */
+[data-theme="editorial"] .spread{
+  perspective:1800px;
+  transform-style:preserve-3d;
+}
+[data-theme="editorial"] .turning-page{
+  position:absolute;
+  top:0;bottom:0;width:50%;z-index:6;
+  background:
+    linear-gradient(90deg,rgba(29,20,16,.14),transparent 12%,transparent 82%,rgba(255,255,255,.35)),
+    linear-gradient(180deg,var(--paper),var(--paper-2));
+  border:1px solid rgba(29,20,16,.35);
+  box-shadow:0 24px 46px rgba(0,0,0,.34);
+  transform-style:preserve-3d;
+  backface-visibility:hidden;
+  pointer-events:none;
+}
+[data-theme="editorial"] .turning-page::after{
+  content:"";position:absolute;inset:0;
+  background:repeating-linear-gradient(0deg,transparent 0 22px,rgba(29,20,16,.045) 23px 24px);
+  opacity:.7;
+}
+[data-theme="editorial"] .spread.turn-next .turning-page{
+  left:50%;transform-origin:left center;animation:ed-turn-next 960ms cubic-bezier(.36,.05,.24,1) forwards;
+}
+[data-theme="editorial"] .spread.turn-prev .turning-page{
+  right:50%;transform-origin:right center;animation:ed-turn-prev 960ms cubic-bezier(.36,.05,.24,1) forwards;
+}
+@keyframes ed-turn-next{
+  0%{transform:rotateY(0deg);filter:brightness(1)}
+  42%{filter:brightness(.94);box-shadow:-28px 22px 52px rgba(0,0,0,.42)}
+  100%{transform:rotateY(-178deg);filter:brightness(.98);box-shadow:-6px 12px 30px rgba(0,0,0,.2)}
+}
+@keyframes ed-turn-prev{
+  0%{transform:rotateY(0deg);filter:brightness(1)}
+  42%{filter:brightness(.94);box-shadow:28px 22px 52px rgba(0,0,0,.42)}
+  100%{transform:rotateY(178deg);filter:brightness(.98);box-shadow:6px 12px 30px rgba(0,0,0,.2)}
+}
+
+/* ---- 收藏柜 (书架) 杂志目录页 ---- */
+[data-theme="editorial"] .catalog{
+  position:relative;z-index:1;flex:1;min-height:0;
+  display:flex;flex-direction:column;
+  margin:18px 40px;
+  background:var(--paper);
+  box-shadow:0 30px 70px rgba(0,0,0,.32);
+  padding:36px 40px;
+  overflow-y:auto;
+}
+[data-theme="editorial"] .catalog .cat-head{
+  display:flex;justify-content:space-between;align-items:baseline;
+  padding-bottom:14px;border-bottom:3px double var(--rule);margin-bottom:22px;
+}
+[data-theme="editorial"] .catalog .cat-head h2{
+  font-family:"Fraunces",serif;font-weight:900;font-size:36px;color:var(--ink);letter-spacing:-.02em;
+}
+[data-theme="editorial"] .catalog .cat-head span{
+  font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:.2em;color:var(--ink-soft);
+}
+[data-theme="editorial"] .cat-grid{
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:20px;
+}
+[data-theme="editorial"] .cat-card{
+  display:flex;flex-direction:column;gap:8px;padding:0;
+  background:transparent;border:1px solid rgba(29,20,16,.3);
+  cursor:pointer;text-align:left;
+}
+[data-theme="editorial"] .cat-card:hover{border-color:var(--ink);background:var(--paper-2)}
+[data-theme="editorial"] .cat-card.on{border-color:var(--accent);border-width:2px}
+[data-theme="editorial"] .cat-art{
+  aspect-ratio:158/211;background:#2a2018 center/cover no-repeat;
+  border-bottom:1px solid rgba(29,20,16,.2);
+}
+[data-theme="editorial"] .cat-art .cat-empty{display:grid;place-items:center;height:100%;color:var(--ink-soft)}
+[data-theme="editorial"] .cat-info{padding:10px 14px 14px}
+[data-theme="editorial"] .cat-info strong{display:block;font-family:"Fraunces",serif;font-weight:700;font-size:15px;color:var(--ink);line-height:1.2}
+[data-theme="editorial"] .cat-info em{display:block;font-family:"Inter Tight",sans-serif;font-style:normal;font-size:11px;color:var(--ink-soft);margin-top:2px;letter-spacing:.08em}
+[data-theme="editorial"] .cat-empty-state{text-align:center;padding:60px 0;font-family:"Fraunces",serif;font-style:italic;font-size:18px;color:var(--ink-soft)}
+
+/* ---- SideSheet 杂志资料卡 (Inter Tight 正文, Fraunces 仅标题) ---- */
+[data-theme="editorial"] .side-sheet{
+  background:var(--paper);
+  border:3px double var(--rule);
+  border-radius:0;
+  color:var(--ink);
+  font-family:"Inter Tight",sans-serif;
+  font-size:13px;
+  box-shadow:8px 8px 0 var(--ink);
+  backdrop-filter:none;
+}
+[data-theme="editorial"] .side-sheet .sheet-close{color:var(--ink)}
+[data-theme="editorial"] .side-sheet .sheet-close:hover{background:var(--ink);color:var(--paper)}
+[data-theme="editorial"] .side-sheet .sheet-kicker{
+  font-family:"Inter Tight",sans-serif;font-weight:700;font-size:11px;
+  letter-spacing:.2em;text-transform:uppercase;color:var(--accent);
+}
+[data-theme="editorial"] .side-sheet h1{
+  font-family:"Fraunces",serif;font-weight:900;font-size:28px;
+  line-height:1.05;color:var(--ink);letter-spacing:-.02em;
+}
+[data-theme="editorial"] .side-sheet .sheet-original{
+  font-family:"Inter Tight",sans-serif;font-size:13px;color:var(--ink-soft);
+}
+[data-theme="editorial"] .side-sheet .sheet-divider{
+  border-color:var(--rule);
+}
+[data-theme="editorial"] .side-sheet .status-pill{
+  font-family:"Inter Tight",sans-serif;font-weight:600;font-size:12px;
+  border:1.5px solid var(--ink);background:transparent;color:var(--ink);
+}
+[data-theme="editorial"] .side-sheet .status-pill.wish{border-color:var(--accent-2);color:var(--accent-2)}
+[data-theme="editorial"] .side-sheet .status-pill.active{background:var(--ink);color:var(--paper)}
+[data-theme="editorial"] .side-sheet .status-pill.done{background:var(--accent);color:var(--paper);border-color:var(--accent)}
+[data-theme="editorial"] .side-sheet .playing-pill{
+  font-family:"Inter Tight",sans-serif;font-weight:600;font-size:12px;
+  background:var(--accent);color:var(--paper);border-color:var(--accent);
+}
+[data-theme="editorial"] .side-sheet .sheet-toolbar{gap:6px}
+[data-theme="editorial"] .side-sheet .toolbar-btn{
+  border:1.5px solid var(--ink);color:var(--ink);border-radius:0;
+}
+[data-theme="editorial"] .side-sheet .toolbar-btn:hover{background:var(--ink);color:var(--paper)}
+[data-theme="editorial"] .side-sheet .toolbar-btn.danger{border-color:var(--accent);color:var(--accent)}
+[data-theme="editorial"] .side-sheet .toolbar-btn.danger:hover{background:var(--accent);color:var(--paper)}
+[data-theme="editorial"] .side-sheet .sheet-delete-confirm{
+  background:var(--paper-2);border:1px solid var(--rule);color:var(--ink);font-size:13px;
+}
+[data-theme="editorial"] .side-sheet .confirm-yes{background:var(--accent);color:var(--paper)}
+[data-theme="editorial"] .side-sheet .sheet-section{
+  border-top:1px solid var(--rule);padding-top:14px;
+}
+[data-theme="editorial"] .side-sheet .playtime-hero span{
+  font-family:"Inter Tight",sans-serif;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-soft);
+}
+[data-theme="editorial"] .side-sheet .playtime-hero strong{
+  font-family:"Fraunces",serif;font-weight:900;font-size:34px;color:var(--ink);
+}
+[data-theme="editorial"] .side-sheet .playtime-details div span{
+  font-family:"Inter Tight",sans-serif;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft);
+}
+[data-theme="editorial"] .side-sheet .playtime-details div strong{
+  font-family:"Inter Tight",sans-serif;font-weight:600;font-size:14px;color:var(--ink);
+}
+[data-theme="editorial"] .side-sheet .completeness-head{
+  font-family:"Inter Tight",sans-serif;font-weight:600;font-size:13px;color:var(--ink);
+}
+[data-theme="editorial"] .side-sheet .completeness-bar{
+  background:var(--paper-2);border:1px solid var(--rule);
+}
+[data-theme="editorial"] .side-sheet .completeness-fill{background:var(--accent)}
+[data-theme="editorial"] .side-sheet .completeness-missing span{
+  font-family:"Inter Tight",sans-serif;font-size:11px;
+  border:1px solid var(--rule);color:var(--ink-soft);
+}
+[data-theme="editorial"] .side-sheet .sheet-collapsible{
+  border-top:1px solid var(--rule);
+}
+[data-theme="editorial"] .side-sheet .sheet-collapsible summary{
+  font-family:"Inter Tight",sans-serif;font-weight:600;font-size:13px;color:var(--ink);
+}
+[data-theme="editorial"] .side-sheet .section-heading{
+  font-family:"Inter Tight",sans-serif;font-weight:600;font-size:13px;color:var(--ink);
+}
+[data-theme="editorial"] .side-sheet .session-item{
+  border-bottom:1px solid rgba(29,20,16,.12);
+}
+[data-theme="editorial"] .side-sheet .session-date{
+  font-family:"JetBrains Mono",monospace;font-size:11px;color:var(--ink-soft);
+}
+[data-theme="editorial"] .side-sheet .session-duration{
+  font-family:"Inter Tight",sans-serif;font-weight:600;font-size:13px;color:var(--ink);
+}
+[data-theme="editorial"] .side-sheet .sheet-description{
+  font-family:"Inter Tight",sans-serif;font-size:13px;line-height:1.6;color:var(--ink);
+}
+[data-theme="editorial"] .side-sheet .sheet-path{
+  font-family:"JetBrains Mono",monospace;font-size:10px;color:var(--ink-soft);
+}
+[data-theme="editorial"] .side-sheet .sheet-hint{
+  font-family:"Inter Tight",sans-serif;font-size:13px;color:var(--ink-soft);
+}
+[data-theme="editorial"] .side-sheet .sheet-empty{
+  font-family:"Inter Tight",sans-serif;font-size:14px;color:var(--ink-soft);
+}
+
+/* Editorial 资料卡最终可读性兜底：避免暗色主题变量漏到浅色纸面 */
+[data-theme="editorial"] .side-sheet,
+[data-theme="editorial"] .side-sheet p,
+[data-theme="editorial"] .side-sheet span,
+[data-theme="editorial"] .side-sheet small,
+[data-theme="editorial"] .side-sheet strong,
+[data-theme="editorial"] .side-sheet summary,
+[data-theme="editorial"] .side-sheet dt,
+[data-theme="editorial"] .side-sheet dd,
+[data-theme="editorial"] .side-sheet button{
+  color:var(--ink);
+}
+[data-theme="editorial"] .side-sheet .sheet-kicker,
+[data-theme="editorial"] .side-sheet .sheet-original,
+[data-theme="editorial"] .side-sheet .playtime-hero span,
+[data-theme="editorial"] .side-sheet .playtime-details div span,
+[data-theme="editorial"] .side-sheet .completeness-missing span,
+[data-theme="editorial"] .side-sheet .session-date,
+[data-theme="editorial"] .side-sheet .sheet-path,
+[data-theme="editorial"] .side-sheet .sheet-hint,
+[data-theme="editorial"] .side-sheet .sheet-empty{
+  color:var(--ink-soft);
+}
+[data-theme="editorial"] .side-sheet .status-pill.active,
+[data-theme="editorial"] .side-sheet .status-pill.done,
+[data-theme="editorial"] .side-sheet .playing-pill,
+[data-theme="editorial"] .side-sheet .toolbar-btn:hover,
+[data-theme="editorial"] .side-sheet .toolbar-btn.danger:hover,
+[data-theme="editorial"] .side-sheet .confirm-yes{
+  color:var(--paper);
+}
+[data-theme="editorial"] .side-sheet .sheet-description{
+  font-size:14px;
+  line-height:1.72;
+  letter-spacing:.01em;
+}
+[data-theme="editorial"] .side-sheet,
+[data-theme="editorial"] .side-sheet *{
+  text-shadow:none !important;
+}
+
+/* 横版主视觉优化：保留杂志语气，但让跨页更像一篇 feature story */
+[data-theme="editorial"] .masthead{
+  padding:12px 40px 10px;
+}
+[data-theme="editorial"] .ribbon{
+  padding:7px 40px;
+}
+[data-theme="editorial"] .topics{
+  padding:6px 40px;
+}
+[data-theme="editorial"] .spread{
+  grid-template-columns:minmax(0,1.08fr) minmax(420px,.92fr);
+  margin:14px 40px 12px;
+}
+[data-theme="editorial"] .page{
+  padding:26px 34px;
+}
+[data-theme="editorial"] .plate{
+  flex:0 1 auto;
+  aspect-ratio:16/10;
+  min-height:0;
+  margin:auto 0;
+  box-shadow:0 14px 34px rgba(29,20,16,.18);
+}
+[data-theme="editorial"] .plate-img{
+  inset:18px;
+  background-size:contain;
+}
+[data-theme="editorial"] .page.right h1{
+  font-size:clamp(34px,3.7vw,58px);
+  line-height:.98;
+  letter-spacing:-.035em;
+  margin-bottom:10px;
+}
+[data-theme="editorial"] .body-text{
+  column-count:1;
+  font-family:"Inter Tight","Microsoft YaHei UI",sans-serif;
+  font-size:14px;
+  line-height:1.7;
+  max-height:7.2em;
+  overflow:hidden;
+}
+[data-theme="editorial"] .dropcap{
+  font-size:52px;
+}
+[data-theme="editorial"] .masthead-meta{
+  margin-bottom:0;
+}
+[data-theme="editorial"] .action{
+  margin-top:16px;
+}
+[data-theme="editorial"] .launch{
+  padding:15px 24px 15px 58px;
+  box-shadow:5px 5px 0 var(--ink);
+}
+[data-theme="editorial"] .launch .lt{
+  font-size:23px;
+}
+[data-theme="editorial"] .dossier{
+  min-width:128px;
+}
+[data-theme="editorial"] .pager{
+  padding:8px 40px 10px;
+}
+[data-theme="editorial"] .toc{
+  min-width:116px;
+  padding:7px 12px;
+}

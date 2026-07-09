@@ -1,6 +1,6 @@
 # Release Checklist
 
-Use this checklist before publishing the project or a new release.
+Use this checklist before publishing a new Gal Launcher release.
 
 ## Repository
 
@@ -9,32 +9,47 @@ Use this checklist before publishing the project or a new release.
 - [ ] No `%APPDATA%\gal-launcher` user data is committed.
 - [ ] No personal one-off maintenance scripts are committed.
 - [ ] `README.md` is up to date.
+- [ ] `CHANGELOG.md` includes the new version.
+- [ ] `package.json` and `package-lock.json` have the release version.
 - [ ] `LICENSE` is present.
 - [ ] `docs/DATA_SOURCES.md` is up to date.
 - [ ] `docs/PRIVACY.md` is up to date.
 
 ## Build
 
-```bash
-npm install
-npm run build
+Fast review build:
+
+```powershell
+Stop-Process -Name "Gal Launcher" -Force -ErrorAction SilentlyContinue
+Start-Sleep -Seconds 1
 npm run dist
 ```
 
-To produce a single downloadable portable exe:
+`npm run dist` runs:
 
-```bash
-npm run dist:portable
+```text
+npm run build && electron-builder --win dir
 ```
 
+Review executable:
+
+```text
+release/win-unpacked/Gal Launcher.exe
+```
+
+Do not run `npm run dist:portable` for the normal review path. The portable build compresses the full Electron runtime into a single exe and is much slower.
+
+## Manual QA
+
 - [ ] App opens from `release/win-unpacked/Gal Launcher.exe`.
-- [ ] Portable build creates `release/Gal Launcher.exe`.
 - [ ] Add game dialog works.
 - [ ] Launching a game increments play count.
 - [ ] Play time is recorded after the game exits.
 - [ ] Metadata search works or fails gracefully.
 - [ ] Cover picker works or fails gracefully.
 - [ ] Backup export/import works.
+- [ ] Theme picker can switch all bundled themes.
+- [ ] Collection/library views work in every theme.
 
 ## Legal / Source Hygiene
 
@@ -46,9 +61,10 @@ npm run dist:portable
 
 ## GitHub Release
 
-- [ ] Create a version tag, for example `v0.1.0`.
-- [ ] Attach `release/Gal Launcher.exe` for normal users.
-- [ ] Optionally attach a zip of `release/win-unpacked`.
+- [ ] Create a version tag, for example `v0.3.0`.
+- [ ] Zip `release/win-unpacked` as `Gal-Launcher-win-unpacked.zip`.
+- [ ] Attach `Gal-Launcher-win-unpacked.zip` for normal users.
+- [ ] Only attach a portable exe/zip when a single-file build is explicitly needed.
 - [ ] Include a short changelog.
 - [ ] Mention Windows support status.
 - [ ] Tell users that Windows may show an "unknown publisher" warning because the app is unsigned.
@@ -56,10 +72,12 @@ npm run dist:portable
 ## Recommended Public Release Text
 
 ```text
-Gal Launcher v0.1.0
+Gal Launcher v0.3.0
 
-下载 Gal Launcher.exe 后双击运行即可。
+本版本重写了主题系统，新增 Arcade、Atelier、Aurora、Lumen Shelf 等多套独立界面。
 
-这是一个本地 Galgame / 视觉小说启动器，不包含任何游戏本体。
+下载 Gal-Launcher-win-unpacked.zip 后解压，运行 win-unpacked/Gal Launcher.exe。
+
+这是一个本地 Galgame / 视觉小说启动器，不包含任何游戏本体、破解或下载资源。
 如果 Windows 提示未知发布者，是因为当前版本尚未购买代码签名证书。
 ```

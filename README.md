@@ -1,23 +1,23 @@
 <p align="center">
-  <img src="docs/assets/screenshots/hero.png" alt="Gal Launcher" width="960">
+  <img src="docs/assets/screenshots/hero-lumen-shelf.png" alt="Gal Launcher · Lumen Shelf theme" width="960">
 </p>
 
-<h1 align="center">Gal Launcher</h1>
+<h1 align="center">✨ Gal Launcher</h1>
 
 <p align="center">
-  <strong>让本地 Galgame / 视觉小说收藏也拥有漂亮、可追踪、可切换主题的启动体验。</strong>
+  <strong>把散落在硬盘里的视觉小说，变成一个想再次打开的书架。</strong>
   <br>
-  <sub>A local visual novel launcher for browsing, launching, tracking, and presenting your library.</sub>
+  <sub>Organize, rediscover, and launch your local visual novel library — beautifully.</sub>
 </p>
 
 <p align="center">
-  <a href="https://github.com/KamiNeko-pre/gal-launcher/releases"><strong>下载 Download</strong></a>
+  <a href="https://github.com/KamiNeko-pre/gal-launcher/releases"><strong>⬇️ 下载 Download</strong></a>
   ·
-  <a href="docs/USER_GUIDE.md">使用教程</a>
+  <a href="docs/USER_GUIDE.md">📖 使用教程</a>
   ·
-  <a href="ROADMAP.md">路线图</a>
+  <a href="ROADMAP.md">🗺️ 路线图</a>
   ·
-  <a href="docs/DATA_SOURCES.md">数据来源</a>
+  <a href="docs/DATA_SOURCES.md">📡 数据来源</a>
 </p>
 
 <p align="center">
@@ -32,52 +32,52 @@
 
 ---
 
-## 这到底是什么？
+## 🤔 这到底是什么？
 
 硬盘里一堆 `game.exe`、`SiglusEngine.exe`、`start.exe`、`launcher.exe`，时间一久就很难分清哪个文件夹是哪部作品，想重温也找不到入口。
 
 Gal Launcher 把这些本地游戏整理成一个视觉小说专用启动器：
 
-- 给每个游戏匹配封面、横版背景、会社、发售日、标签和简介
-- 从 VNDB / Bangumi / Steam 等多个来源辅助搜索资料和图片候选
-- 用多套主题展示作品库，而不是只显示文件路径
-- 一键启动游戏，并自动记录启动次数和游玩时长
-- 数据保存在本地，支持导出备份和恢复
+- 🎮 给每个游戏匹配封面、横版背景、会社、发售日、标签和简介
+- 📡 从 VNDB / Bangumi / Steam 等多个来源辅助搜索资料和图片候选
+- 🎨 用多套主题展示作品库，而不是只显示文件路径
+- ⚡ 一键启动游戏，并自动记录启动次数和游玩时长
+- 🔒 数据保存在本地，支持导出备份和恢复
 
 本质上，它是一个“本地 Galgame / 视觉小说书架”。
 
 ---
 
-## 功能亮点
+## 🎨 功能亮点
 
 <table>
 <tr>
   <td width="50%">
-    <h4>本地游戏库</h4>
+    <h4>🗃️ 本地游戏库</h4>
     <p>添加 <code>.exe</code>、<code>.bat</code>、<code>.cmd</code>、<code>.lnk</code> 启动文件，自动设置工作目录并启动游戏。</p>
   </td>
   <td width="50%">
-    <h4>资料补全</h4>
+    <h4>🔎 资料补全</h4>
     <p>搜索标题、原名、会社、简介、发售日、标签、评分和图片候选，自动识别不准时也可以手动修正。</p>
   </td>
 </tr>
 <tr>
   <td>
-    <h4>封面与横版背景</h4>
+    <h4>🖼️ 封面与横版背景</h4>
     <p>竖版封面用于书架和收藏页，横版图用于启动页。可以从候选里选，也可以使用本地图片。</p>
   </td>
   <td>
-    <h4>游玩追踪</h4>
+    <h4>⏱️ 游玩追踪</h4>
     <p>记录启动次数、总时长、最近游玩时间、当前进行状态和会话历史。</p>
   </td>
 </tr>
 <tr>
   <td>
-    <h4>多主题界面</h4>
+    <h4>🎭 多主题界面</h4>
     <p>六套主题拥有不同布局、导航和收藏页，不只是换颜色。</p>
   </td>
   <td>
-    <h4>本地优先</h4>
+    <h4>🔒 本地优先</h4>
     <p>游戏库数据保存在本机。支持备份导出和恢复，不依赖云同步。</p>
   </td>
 </tr>
@@ -85,9 +85,9 @@ Gal Launcher 把这些本地游戏整理成一个视觉小说专用启动器：
 
 ---
 
-## 主题系统
+## 🎨 主题系统
 
-0.3.0 之后，主题不再只是配色预设，而是完整的前端布局。每套主题都有自己的信息架构、作品导航和收藏页表达。
+六套完整主题，六种重逢方式。0.3.0 之后，主题不再只是配色预设：每一套都拥有自己的信息架构、作品导航和收藏页表达。
 
 | 主题 | 风格 |
 | --- | --- |
@@ -100,22 +100,21 @@ Gal Launcher 把这些本地游戏整理成一个视觉小说专用启动器：
 
 <table>
 <tr>
-  <td width="50%"><img src="docs/assets/screenshots/theme-cinema.jpg" alt="Cinema theme"><br><strong>Cinema</strong></td>
-  <td width="50%"><img src="docs/assets/screenshots/theme-editorial.jpg" alt="Editorial theme"><br><strong>Editorial</strong></td>
+  <td width="50%"><img src="docs/assets/screenshots/theme-editorial-2026.png" alt="Editorial theme"><br><strong>Editorial · 杂志跨页</strong></td>
+  <td width="50%"><img src="docs/assets/screenshots/theme-arcade-2026.png" alt="Arcade theme"><br><strong>Arcade · CRT 街机</strong></td>
 </tr>
 <tr>
-  <td width="50%"><img src="docs/assets/screenshots/theme-arcade.jpg" alt="Arcade theme"><br><strong>Arcade</strong></td>
-  <td width="50%"><img src="docs/assets/screenshots/theme-atelier.jpg" alt="Atelier theme"><br><strong>Atelier</strong></td>
+  <td width="50%"><img src="docs/assets/screenshots/theme-atelier-2026.png" alt="Atelier theme"><br><strong>Atelier · 手账桌面</strong></td>
+  <td width="50%"><img src="docs/assets/screenshots/hero-lumen-shelf.png" alt="Lumen Shelf theme"><br><strong>Lumen Shelf · 明亮书架</strong></td>
 </tr>
 <tr>
-  <td width="50%"><img src="docs/assets/screenshots/theme-lumen-shelf.jpg" alt="Lumen Shelf theme"><br><strong>Lumen Shelf</strong></td>
-  <td width="50%"><img src="docs/assets/screenshots/theme-aurora.jpg" alt="Aurora theme"><br><strong>Aurora</strong></td>
+  <td colspan="2"><img src="docs/assets/screenshots/theme-aurora-2026.png" alt="Aurora theme"><br><strong>Aurora · 柔光剧照舞台</strong></td>
 </tr>
 </table>
 
 ---
 
-## 快速开始
+## ⚡ 快速开始
 
 ```text
 1. 下载 Gal-Launcher-vX.X.X.zip
@@ -131,29 +130,7 @@ Gal Launcher 把这些本地游戏整理成一个视觉小说专用启动器：
 
 ---
 
-## 截图画廊
-
-<p align="center">
-  <img src="docs/assets/screenshots/launch-page.png" alt="启动页" width="720">
-  <br>
-  <em>横版主视觉启动页</em>
-</p>
-
-<p align="center">
-  <img src="docs/assets/screenshots/side-sheet.png" alt="资料面板" width="720">
-  <br>
-  <em>游戏详情面板：资料、时长统计和游玩记录</em>
-</p>
-
-<p align="center">
-  <img src="docs/assets/screenshots/cover-search.png" alt="封面搜索" width="720">
-  <br>
-  <em>封面和背景候选搜索</em>
-</p>
-
----
-
-## 下载与运行
+## 📥 下载与运行
 
 前往 [Releases](https://github.com/KamiNeko-pre/gal-launcher/releases) 下载最新版本。
 
@@ -167,7 +144,7 @@ win-unpacked/Gal Launcher.exe
 
 ---
 
-## 数据来源
+## 📡 数据来源
 
 | 来源 | 用途 | 类型 |
 | --- | --- | --- |
@@ -183,7 +160,7 @@ win-unpacked/Gal Launcher.exe
 
 ---
 
-## 对比
+## ⚔️ 对比
 
 | | Gal Launcher | Playnite | Steam | 手动管理 |
 | --- | :---: | :---: | :---: | :---: |
@@ -196,7 +173,7 @@ win-unpacked/Gal Launcher.exe
 
 ---
 
-## 开发
+## 🛠️ 开发
 
 ```powershell
 npm install
@@ -224,13 +201,13 @@ release/win-unpacked/Gal Launcher.exe
 
 ---
 
-## 路线图
+## 🗺️ 路线图
 
 见 [ROADMAP.md](ROADMAP.md)。近期方向包括主题稳定性、收藏页体验、性能优化和资料源可维护性。
 
 ---
 
-## 参与贡献
+## 🤝 参与贡献
 
 欢迎提 Issue 和 PR。请不要上传游戏文件、下载封面、个人库数据或本地缓存。
 
@@ -238,6 +215,6 @@ release/win-unpacked/Gal Launcher.exe
 
 ---
 
-## License
+## 📜 License
 
 MIT © 2026 Gal Launcher

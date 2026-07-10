@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/assets/screenshots/hero-lumen-shelf.png" alt="Gal Launcher · Lumen Shelf theme" width="960">
+  <img src="docs/assets/screenshots/hero-cinema-2026.png" alt="Gal Launcher · Cinema theme" width="960">
 </p>
 
 <h1 align="center">✨ Gal Launcher</h1>
@@ -100,15 +100,16 @@ Gal Launcher 把这些本地游戏整理成一个视觉小说专用启动器：
 
 <table>
 <tr>
+  <td width="50%"><img src="docs/assets/screenshots/hero-cinema-2026.png" alt="Cinema theme"><br><strong>Cinema · 沉浸式全屏舞台</strong></td>
   <td width="50%"><img src="docs/assets/screenshots/theme-editorial-2026.png" alt="Editorial theme"><br><strong>Editorial · 杂志跨页</strong></td>
+</tr>
+<tr>
   <td width="50%"><img src="docs/assets/screenshots/theme-arcade-2026.png" alt="Arcade theme"><br><strong>Arcade · CRT 街机</strong></td>
-</tr>
-<tr>
   <td width="50%"><img src="docs/assets/screenshots/theme-atelier-2026.png" alt="Atelier theme"><br><strong>Atelier · 手账桌面</strong></td>
-  <td width="50%"><img src="docs/assets/screenshots/hero-lumen-shelf.png" alt="Lumen Shelf theme"><br><strong>Lumen Shelf · 明亮书架</strong></td>
 </tr>
 <tr>
-  <td colspan="2"><img src="docs/assets/screenshots/theme-aurora-2026.png" alt="Aurora theme"><br><strong>Aurora · 柔光剧照舞台</strong></td>
+  <td width="50%"><img src="docs/assets/screenshots/hero-lumen-shelf.png" alt="Lumen Shelf theme"><br><strong>Lumen Shelf · 明亮书架</strong></td>
+  <td width="50%"><img src="docs/assets/screenshots/theme-aurora-2026.png" alt="Aurora theme"><br><strong>Aurora · 柔光剧照舞台</strong></td>
 </tr>
 </table>
 

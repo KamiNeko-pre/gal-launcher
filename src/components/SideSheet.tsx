@@ -33,6 +33,7 @@ interface SideSheetProps {
   onFindCovers: (game: Game) => void;
   onEdit: (game: Game) => void;
   onDelete: (game: Game) => void;
+  onRetryBangumiRating: (game: Game) => void;
   isSearchingMetadata: boolean;
   isFindingCovers: boolean;
   metadataKeyword: string;
@@ -47,6 +48,7 @@ export function SideSheet({
   onFindCovers,
   onEdit,
   onDelete,
+  onRetryBangumiRating,
   isSearchingMetadata,
   isFindingCovers,
   metadataKeyword
@@ -160,6 +162,11 @@ export function SideSheet({
               <div>
                 <span>Bangumi</span>
                 <strong>{formatBgmRating(game)}</strong>
+                {game.bgmRatingStatus && game.bgmRatingStatus !== "success" && (
+                  <button className="text-button" onClick={() => onRetryBangumiRating(game)} style={{ marginTop: 6 }}>
+                    <RefreshCw size={13} /> 重新查询
+                  </button>
+                )}
               </div>
             </div>
           </div>

@@ -76,6 +76,7 @@ function App() {
     openMetadataCandidates,
     applyMetadataCandidate,
     launch,
+    retryBangumiRating,
     rescanMetadata,
     findCovers,
     chooseCover,
@@ -116,6 +117,7 @@ function App() {
         onFindCovers={findCovers}
         onEdit={startEdit}
         onDelete={deleteGame}
+        onRetryBangumiRating={retryBangumiRating}
         isSearchingMetadata={isSearchingMetadata}
         isFindingCovers={isFindingCovers}
         metadataKeyword={metadataKeyword}

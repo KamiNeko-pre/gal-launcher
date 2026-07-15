@@ -133,6 +133,13 @@ export function useLibrary() {
   const selected = games.find((game) => game.id === selectedId) ?? games[0] ?? null;
   const selectedImage = selected ? imageCache[selected.backgroundPath] || imageCache[selected.coverPath] : "";
 
+  function retryBangumiRating(game: Game) {
+    const attemptedAt = nowIso();
+    setGames((current) => current.map((item) => item.id === game.id
+      ? { ...item, bgmRatingStatus: "stale", bgmRatingNextRetryAt: undefined, bgmRatingLastAttemptAt: attemptedAt, updatedAt: attemptedAt }
+      : item));
+  }
+
   useEffect(() => {
     if (selectedImage && selectedImage !== prevImage && prevImage !== null) {
       setFadingImage(prevImage);
@@ -520,6 +527,7 @@ export function useLibrary() {
     closeContextMenu,
     saveDraft,
     chooseImage
+    ,retryBangumiRating
   };
 }
 

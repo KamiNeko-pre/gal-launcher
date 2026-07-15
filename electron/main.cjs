@@ -891,8 +891,13 @@ async function hydrateMetadataCandidate(game, candidate) {
   if (!vn) return { confidence: 0, source: "none" };
   const coverPath = vn.image?.url || "";
   const descriptionOriginal = stripMarkup(vn.description || "");
+  const descriptionSourceHash = crypto.createHash("sha256").update(descriptionOriginal, "utf8").digest("hex");
   let translation = { text: descriptionOriginal, status: "failed" };
-  try { translation = await translateToChinese(descriptionOriginal); } catch { /* preserve the original description */ }
+  if (game.descriptionSourceHash === descriptionSourceHash && game.descriptionZh) {
+    translation = { text: game.descriptionZh, status: "success" };
+  } else {
+    try { translation = await translateToChinese(descriptionOriginal); } catch { /* preserve the original description */ }
+  }
   const title = pickPreferredTitle(vn);
   const developer = (vn.developers || []).map((item) => item.name).filter(Boolean).join(", ");
 
@@ -907,7 +912,7 @@ async function hydrateMetadataCandidate(game, candidate) {
     description: translation.text,
     descriptionOriginal,
     descriptionZh: translation.status === "success" || translation.status === "already_zh" ? translation.text : "",
-    descriptionSourceHash: crypto.createHash("sha256").update(descriptionOriginal, "utf8").digest("hex"),
+    descriptionSourceHash,
     translationStatus: translation.status,
     translationUpdatedAt: new Date().toISOString(),
     metadataSource: "vndb",

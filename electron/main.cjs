@@ -4,6 +4,14 @@ const path = require("node:path");
 const crypto = require("node:crypto");
 const { spawn, execFile } = require("node:child_process");
 const { pathToFileURL } = require("node:url");
+const { createNetworkClient } = require("./network/client.cjs");
+
+// Route external requests through Electron's network stack so the session
+// proxy configured below also applies to metadata and translation providers.
+const networkClient = createNetworkClient({
+  fetchImpl: (...args) => net.fetch(...args)
+});
+const fetch = (...args) => networkClient.fetch(...args);
 
   const isDev = Boolean(process.env.VITE_DEV_SERVER_URL);
   let mainWindow;

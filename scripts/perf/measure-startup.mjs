@@ -8,9 +8,9 @@ import process from "node:process";
 const execFileAsync = promisify(execFile);
 const root = path.resolve(import.meta.dirname, "../..");
 const profile = process.argv.includes("--profile") ? process.argv[process.argv.indexOf("--profile") + 1] : "empty";
-const runs = Number(process.env.GAL_LAUNCHER_PERF_RUNS || 3);
+const runs = Number(process.env.GAL_LAUNCHER_PERF_RUNS || 5);
 const fixture = path.join(root, "scripts", "perf", "fixtures", profile, "games.json");
-if (!existsSync(fixture)) throw new Error(`Unknown profile: ${profile}`);
+if (profile !== "current" && !existsSync(fixture)) throw new Error(`Unknown profile: ${profile}`);
 
 function sleep(ms) { return new Promise((resolve) => setTimeout(resolve, ms)); }
 async function processTreeMemory(pid) {
@@ -19,9 +19,13 @@ async function processTreeMemory(pid) {
 }
 
 async function runOnce(index) {
-  const userData = await mkdtemp(path.join(process.env.TEMP || process.cwd(), "gal-launcher-perf-"));
-  await mkdir(path.join(userData, "library"), { recursive: true });
-  await writeFile(path.join(userData, "library", "games.json"), await readFile(fixture));
+  const isolated = profile !== "current";
+  const userData = isolated ? await mkdtemp(path.join(process.env.TEMP || process.cwd(), "gal-launcher-perf-")) : process.env.GAL_LAUNCHER_PERF_USER_DATA;
+  if (!userData) throw new Error("--profile current requires GAL_LAUNCHER_PERF_USER_DATA");
+  if (isolated) {
+    await mkdir(path.join(userData, "library"), { recursive: true });
+    await writeFile(path.join(userData, "library", "games.json"), await readFile(fixture));
+  }
   const perfLog = path.join(userData, "startup.json");
   const electron = process.platform === "win32" ? path.join(root, "node_modules", ".bin", "electron.cmd") : path.join(root, "node_modules", ".bin", "electron");
   const child = spawn(electron, [root], { cwd: root, env: { ...process.env, GAL_LAUNCHER_PERF_USER_DATA: userData, GAL_LAUNCHER_PERF_LOG: perfLog }, windowsHide: true, shell: process.platform === "win32", stdio: "ignore" });
@@ -40,15 +44,17 @@ async function runOnce(index) {
     try { await execFileAsync("taskkill", ["/PID", String(child.pid), "/T", "/F"], { windowsHide: true }); } catch {}
   } else child.kill();
   await sleep(500);
-  await rm(userData, { recursive: true, force: true });
+  if (isolated) await rm(userData, { recursive: true, force: true });
   const peakBytes = Math.max(0, ...samples.map((sample) => sample.bytes || 0));
   return { run: index + 1, profile, peakWorkingSetBytes: peakBytes, marks };
 }
 
 const results = [];
 for (let index = 0; index < runs; index++) results.push(await runOnce(index));
+const sortedPeaks = results.map((r) => r.peakWorkingSetBytes).sort((a, b) => a - b);
+const medianPeakWorkingSetBytes = sortedPeaks[Math.floor(sortedPeaks.length / 2)] || 0;
 const outputDir = path.join(root, "artifacts", "perf");
 await mkdir(outputDir, { recursive: true });
 const output = path.join(outputDir, `startup-${Date.now()}.json`);
 await writeFile(output, JSON.stringify({ profile, runs: results }, null, 2));
-console.log(JSON.stringify({ output, profile, runs: results.length, peakWorkingSetBytes: results.map((r) => r.peakWorkingSetBytes) }, null, 2));
+console.log(JSON.stringify({ output, profile, runs: results.length, peakWorkingSetBytes: results.map((r) => r.peakWorkingSetBytes), medianPeakWorkingSetBytes }, null, 2));

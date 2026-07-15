@@ -2,10 +2,10 @@
 
 ## 当前基线
 
-测试环境：Windows 本机，Electron 38，空库 profile，3 次采样。
+测试环境：Windows 本机，Electron 38，空库 profile，5 次采样。
 
 - 首屏 `first-paint-ack`：约 446–535 ms
-- 进程树峰值工作集：约 384–406 MiB
+- 进程树峰值工作集：约 404–432 MiB，中位数约 407 MiB
 - 采样命令：`npm run perf:startup -- --profile empty`
 
 空库工作集主要是 Electron/Chromium 基线；真实库应在隔离 userData 中单独测量，不能把用户路径或图片提交到仓库。

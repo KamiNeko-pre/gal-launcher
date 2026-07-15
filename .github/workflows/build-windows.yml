@@ -25,7 +25,7 @@ jobs:
         run: npm ci
 
       - name: Build
-        run: npm run build
+        run: npm run check
 
       - name: Package Windows app
         run: npm run dist

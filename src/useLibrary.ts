@@ -56,6 +56,7 @@ export function useLibrary() {
   const [fadingImage, setFadingImage] = useState<string | null>(null);
   const [tagFilter, setTagFilter] = useState<string | null>(null);
   const [ctxMenu, setCtxMenu] = useState<{ game: Game; x: number; y: number } | null>(null);
+  const hydratedRef = useRef(false);
   const [integrationSettings, setIntegrationSettings] = useState<IntegrationSettings>(() => {
     try { return JSON.parse(localStorage.getItem("gal-launcher-integrations") || "{}"); } catch { return {}; }
   });
@@ -65,11 +66,14 @@ export function useLibrary() {
     window.galLauncher.loadLibrary().then((loaded) => {
       setGames(loaded);
       setSelectedId(loaded[0]?.id ?? "");
+      hydratedRef.current = true;
     });
   }, []);
 
   useEffect(() => {
-    if (games.length > 0) window.galLauncher.saveLibrary(games);
+    if (!hydratedRef.current) return;
+    const timer = window.setTimeout(() => { void window.galLauncher.saveLibrary(games); }, 300);
+    return () => window.clearTimeout(timer);
   }, [games]);
 
   useEffect(() => {

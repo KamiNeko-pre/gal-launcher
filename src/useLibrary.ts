@@ -12,6 +12,12 @@ import type { ThemeDefinition } from "./theme";
 import { loadThemeSettings } from "./theme";
 import { statuses, nowIso, makeGame, formatPlayTime, getTotalPlaySeconds } from "./utils";
 
+function toLocalImageUrl(imagePath: string) {
+  if (/^(?:data:|https?:|local-file:)/i.test(imagePath)) return imagePath;
+  const normalized = imagePath.replace(/\\/g, "/").split("/").map(encodeURIComponent).join("/");
+  return `local-file:///${normalized}`;
+}
+
 function shouldLookupBangumiRating(game: Game, now = Date.now()) {
   const nextRetryAt = Date.parse(game.bgmRatingNextRetryAt || "");
   if (Number.isFinite(nextRetryAt) && nextRetryAt > now) return false;
@@ -114,39 +120,14 @@ export function useLibrary() {
     const paths = Array.from(
       new Set([...games.flatMap((game) => [game.coverPath, game.backgroundPath]), ...coverCandidates.map((candidate) => candidate.path)].filter(Boolean))
     );
-    const remote = paths.filter((imagePath) => /^https?:\/\//i.test(imagePath) && imageCache[imagePath] !== imagePath);
-    if (remote.length > 0) {
+    const nextPaths = paths.filter((imagePath) => !imageCache[imagePath]).map((imagePath) => [imagePath, toLocalImageUrl(imagePath)] as const);
+    if (nextPaths.length > 0) {
       setImageCache((current) => {
         const next = { ...current };
-        for (const imagePath of remote) next[imagePath] = imagePath;
+        for (const [imagePath, imageUrl] of nextPaths) next[imagePath] = imageUrl;
         return next;
       });
     }
-
-    const missing = paths.filter((imagePath) => !/^https?:\/\//i.test(imagePath) && !imageCache[imagePath]);
-    if (missing.length === 0) return;
-
-    let cancelled = false;
-    Promise.all(
-      missing.map(async (imagePath) => {
-        try {
-          return [imagePath, await window.galLauncher.readImageDataUrl(imagePath)] as const;
-        } catch {
-          return [imagePath, ""] as const;
-        }
-      })
-    ).then((entries) => {
-      if (cancelled) return;
-      setImageCache((current) => {
-        const next = { ...current };
-        for (const [imagePath, dataUrl] of entries) next[imagePath] = dataUrl;
-        return next;
-      });
-    });
-
-    return () => {
-      cancelled = true;
-    };
   }, [games, coverCandidates, imageCache]);
 
   const selected = games.find((game) => game.id === selectedId) ?? games[0] ?? null;

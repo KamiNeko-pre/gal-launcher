@@ -169,6 +169,11 @@ export function SideSheet({
                     <RefreshCw size={13} /> 重新查询
                   </button>
                 )}
+                {game.bgmId && game.bgmId > 0 && (
+                  <button className="text-button" onClick={() => window.open(`https://bgm.tv/subject/${game.bgmId}`, "_blank")} style={{ marginTop: 6 }}>
+                    在 Bangumi 查看
+                  </button>
+                )}
               </div>
             </div>
           </div>

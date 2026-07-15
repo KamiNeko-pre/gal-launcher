@@ -909,6 +909,9 @@ async function hydrateMetadataCandidate(game, candidate) {
     descriptionZh: translation.status === "success" || translation.status === "already_zh" ? translation.text : "",
     translationStatus: translation.status,
     translationUpdatedAt: new Date().toISOString(),
+    metadataSource: "vndb",
+    metadataSourceId: vn.id,
+    metadataConfidence: candidate.confidence,
     coverPath,
     backgroundPath: coverPath,
     tags: []

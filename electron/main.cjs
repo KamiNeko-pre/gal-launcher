@@ -20,6 +20,17 @@ const networkClient = createNetworkClient({
 });
 const fetch = (...args) => networkClient.fetch(...args);
 
+const perfStartedAt = Date.now();
+const perfMarks = {};
+function markPerf(name) {
+  if (!process.env.GAL_LAUNCHER_PERF_LOG) return;
+  perfMarks[name] = { at: new Date().toISOString(), msSinceStart: Date.now() - perfStartedAt };
+  try {
+    fs.mkdirSync(path.dirname(process.env.GAL_LAUNCHER_PERF_LOG), { recursive: true });
+    fs.writeFileSync(process.env.GAL_LAUNCHER_PERF_LOG, JSON.stringify(perfMarks, null, 2), "utf8");
+  } catch { /* diagnostics must never affect startup */ }
+}
+
   const isDev = Boolean(process.env.VITE_DEV_SERVER_URL);
   let mainWindow;
   const activePlaySessions = new Map();
@@ -87,6 +98,9 @@ function createWindow() {
       nodeIntegration: false
     }
   });
+  markPerf("browser-window-created");
+  mainWindow.webContents.on("dom-ready", () => markPerf("dom-ready"));
+  mainWindow.webContents.on("did-finish-load", () => markPerf("did-finish-load"));
 
   // Register F12 to toggle DevTools (Ctrl+Shift+I doesn't work with autoHideMenuBar)
   mainWindow.webContents.on("before-input-event", (_event, input) => {
@@ -2420,7 +2434,10 @@ ipcMain.handle("game:launch", async (_event, game, integrationSettings = {}) => 
   return { launched: true, sessionId, startedAt };
 });
 
+ipcMain.on("perf:first-paint-ack", () => markPerf("first-paint-ack"));
+
 app.whenReady().then(() => {
+  markPerf("app-ready");
   Menu.setApplicationMenu(null);
 
   // Proxy: only use if PROXY_PORT env var is set

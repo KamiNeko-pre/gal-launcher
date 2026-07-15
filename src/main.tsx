@@ -88,6 +88,10 @@ function App() {
 
   const Layout = layouts[theme.id] ?? layouts.cinema;
 
+  useEffect(() => {
+    window.galLauncher.reportFirstPaint?.();
+  }, []);
+
   return (
     <div className={`app-shell ${usesCoverFallback ? "cover-fallback-mode" : "keyvisual-mode"} ${isInfoOpen ? "info-open" : ""}`}>
       <Suspense fallback={<LayoutFallback />}>

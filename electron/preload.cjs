@@ -20,5 +20,6 @@ contextBridge.exposeInMainWorld("galLauncher", {
     const listener = (_event, payload) => callback(payload);
     ipcRenderer.on("game:sessionEnded", listener);
     return () => ipcRenderer.removeListener("game:sessionEnded", listener);
-  }
+  },
+  reportFirstPaint: () => ipcRenderer.send("perf:first-paint-ack")
 });

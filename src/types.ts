@@ -124,6 +124,7 @@ export interface LauncherApi {
   readImageDataUrl: (path: string) => Promise<string>;
   launchGame: (game: Game, integrationSettings?: IntegrationSettings) => Promise<LaunchResult>;
   onPlaySessionEnded: (callback: (event: PlaySessionEndedEvent) => void) => () => void;
+  reportFirstPaint?: () => void;
 }
 
 declare global {

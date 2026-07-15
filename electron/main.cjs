@@ -12,6 +12,7 @@ const {
 } = require("./metadata/bangumi.cjs");
 const { translateLongText } = require("./metadata/translation.cjs");
 const { launchWithIntegration, prepareMagpieScaling } = require("./integrations/magpie.cjs");
+const { createLibraryRepository } = require("./library/repository.cjs");
 
 if (process.env.GAL_LAUNCHER_PERF_USER_DATA) {
   app.setPath("userData", path.resolve(process.env.GAL_LAUNCHER_PERF_USER_DATA));
@@ -23,6 +24,8 @@ const networkClient = createNetworkClient({
   fetchImpl: (...args) => net.fetch(...args)
 });
 const fetch = (...args) => networkClient.fetch(...args);
+const libraryRepository = createLibraryRepository({ getUserDataPath: () => app.getPath("userData") });
+const { readLibrary, writeLibrary, backupPayload } = libraryRepository;
 
 const perfStartedAt = Date.now();
 const perfMarks = {};
@@ -120,12 +123,6 @@ function createWindow() {
   }
 }
 
-function dataPath() {
-  const dir = path.join(app.getPath("userData"), "library");
-  fs.mkdirSync(dir, { recursive: true });
-  return path.join(dir, "games.json");
-}
-
 function journalFile() {
   return path.join(app.getPath("userData"), "library", "play-session-journal.json");
 }
@@ -156,28 +153,6 @@ function journalSnapshot(sessionId, seconds) {
     journal[sessionId].snapshotSeconds = seconds;
     writeJsonFile(journalFile(), journal);
   }
-}
-
-function readLibrary() {
-  try {
-    return JSON.parse(fs.readFileSync(dataPath(), "utf8"));
-  } catch {
-    return [];
-  }
-}
-
-function writeLibrary(games) {
-  fs.writeFileSync(dataPath(), JSON.stringify(games, null, 2), "utf8");
-  return games;
-}
-
-function backupPayload(games) {
-  return {
-    app: "Gal Launcher",
-    version: 1,
-    exportedAt: new Date().toISOString(),
-    games: Array.isArray(games) ? games : readLibrary()
-  };
 }
 
 function assetDir(name) {

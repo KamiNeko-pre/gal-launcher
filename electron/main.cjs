@@ -13,6 +13,10 @@ const {
 const { translateLongText } = require("./metadata/translation.cjs");
 const { launchWithIntegration, prepareMagpieScaling } = require("./integrations/magpie.cjs");
 
+if (process.env.GAL_LAUNCHER_PERF_USER_DATA) {
+  app.setPath("userData", path.resolve(process.env.GAL_LAUNCHER_PERF_USER_DATA));
+}
+
 // Route external requests through Electron's network stack so the session
 // proxy configured below also applies to metadata and translation providers.
 const networkClient = createNetworkClient({

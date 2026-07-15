@@ -18,7 +18,9 @@ out/
 
 # Local maintenance scripts used while developing a personal library.
 # They may contain one-off fixes, local cache assumptions, or source-specific probes.
-scripts/
+scripts/*
+!scripts/perf/
+!scripts/perf/**
 
 # Logs and caches
 *.log
@@ -51,3 +53,4 @@ desktop.ini
 coverage/
 playwright-report/
 test-results/
+artifacts/perf/

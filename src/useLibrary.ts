@@ -244,6 +244,7 @@ export function useLibrary() {
       descriptionZh: translatedDescription || oldChineseDescription || undefined,
       translationStatus: metadata.translationStatus || game.translationStatus,
       translationUpdatedAt: metadata.translationUpdatedAt || game.translationUpdatedAt,
+      descriptionSourceHash: (metadata as Partial<PickedLaunchFile>).descriptionSourceHash || game.descriptionSourceHash,
       metadataSource: (metadata as Partial<PickedLaunchFile>).metadataSource || game.metadataSource,
       metadataSourceId: (metadata as Partial<PickedLaunchFile>).metadataSourceId || game.metadataSourceId,
       metadataConfidence: (metadata as Partial<PickedLaunchFile>).metadataConfidence ?? game.metadataConfidence,

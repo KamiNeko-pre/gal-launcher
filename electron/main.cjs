@@ -907,6 +907,7 @@ async function hydrateMetadataCandidate(game, candidate) {
     description: translation.text,
     descriptionOriginal,
     descriptionZh: translation.status === "success" || translation.status === "already_zh" ? translation.text : "",
+    descriptionSourceHash: crypto.createHash("sha256").update(descriptionOriginal, "utf8").digest("hex"),
     translationStatus: translation.status,
     translationUpdatedAt: new Date().toISOString(),
     metadataSource: "vndb",

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Clock3,
   FolderOpen,
@@ -54,6 +54,8 @@ export function SideSheet({
   metadataKeyword
 }: SideSheetProps) {
   const [deletePending, setDeletePending] = useState(false);
+  const [showOriginalDescription, setShowOriginalDescription] = useState(false);
+  useEffect(() => setShowOriginalDescription(false), [game?.id]);
   const totalSeconds = game ? getTotalPlaySeconds(game, clockTick) : 0;
   const recentTwoWeeks = game ? getRecentTwoWeeksSeconds(game, clockTick) : 0;
   const comp = game ? completeness(game) : 0;
@@ -224,7 +226,12 @@ export function SideSheet({
                     {game.translationStatus === "failed" && (
                       <p className="sheet-hint" style={{ marginTop: 12 }}>翻译暂不可用，当前显示原文</p>
                     )}
-                    <p className="sheet-description" style={{ marginTop: 12 }}>{game.description}</p>
+                    {(game.descriptionOriginal || game.descriptionZh) && (
+                      <button className="text-button" onClick={() => setShowOriginalDescription((value) => !value)} style={{ marginTop: 8 }}>
+                        {showOriginalDescription ? "显示中文" : "显示原文"}
+                      </button>
+                    )}
+                    <p className="sheet-description" style={{ marginTop: 12 }}>{showOriginalDescription ? (game.descriptionOriginal || game.description) : game.description}</p>
                   </>
                 ) : (
                   <p className="sheet-hint" style={{ marginTop: 12 }}>暂无简介</p>

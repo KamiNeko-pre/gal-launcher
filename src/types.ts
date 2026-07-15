@@ -16,6 +16,7 @@ export interface Game {
   descriptionZh?: string;
   translationStatus?: "success" | "already_zh" | "failed" | "empty";
   translationUpdatedAt?: string;
+  descriptionSourceHash?: string;
   metadataSource?: string;
   metadataSourceId?: string;
   metadataConfidence?: number;
@@ -77,6 +78,7 @@ export interface PickedLaunchFile {
   descriptionZh?: string;
   translationStatus?: "success" | "already_zh" | "failed" | "empty";
   translationUpdatedAt?: string;
+  descriptionSourceHash?: string;
   metadataSource?: string;
   metadataSourceId?: string;
   metadataConfidence?: number;

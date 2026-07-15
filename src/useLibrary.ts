@@ -12,12 +12,7 @@ import type {
 import type { ThemeDefinition } from "./theme";
 import { loadThemeSettings } from "./theme";
 import { statuses, nowIso, makeGame, formatPlayTime, getTotalPlaySeconds } from "./utils";
-
-function toLocalImageUrl(imagePath: string) {
-  if (/^(?:data:|https?:|local-file:)/i.test(imagePath)) return imagePath;
-  const normalized = imagePath.replace(/\\/g, "/").split("/").map(encodeURIComponent).join("/");
-  return `local-file:///${normalized}`;
-}
+import { resolveImageSource } from "./images/imageSource";
 
 function shouldLookupBangumiRating(game: Game, now = Date.now()) {
   const nextRetryAt = Date.parse(game.bgmRatingNextRetryAt || "");
@@ -135,7 +130,7 @@ export function useLibrary() {
     const paths = Array.from(
       new Set([...games.flatMap((game) => [game.coverPath, game.backgroundPath]), ...coverCandidates.map((candidate) => candidate.path)].filter(Boolean))
     );
-    const nextPaths = paths.filter((imagePath) => !imageCache[imagePath]).map((imagePath) => [imagePath, toLocalImageUrl(imagePath)] as const);
+    const nextPaths = paths.filter((imagePath) => !imageCache[imagePath]).map((imagePath) => [imagePath, resolveImageSource(imagePath)] as const);
     if (nextPaths.length > 0) {
       setImageCache((current) => {
         const next = { ...current };

@@ -77,6 +77,7 @@ function App() {
     applyMetadataCandidate,
     launch,
     retryBangumiRating,
+    integrationSettings, setIntegrationSettings,
     rescanMetadata,
     findCovers,
     chooseCover,
@@ -314,6 +315,25 @@ function App() {
                   <small>{preset.description}</small>
                 </button>
               ))}
+            </div>
+            <div className="sheet-section" style={{ marginTop: 18 }}>
+              <h3 style={{ margin: 0 }}>Magpie 联动</h3>
+              <label className="checkbox-row" style={{ marginTop: 10 }}>
+                <input
+                  type="checkbox"
+                  checked={Boolean(integrationSettings.magpieEnabled)}
+                  onChange={(event) => setIntegrationSettings({ ...integrationSettings, magpieEnabled: event.target.checked })}
+                />
+                启动游戏前确保 Magpie 运行
+              </label>
+              <input
+                style={{ marginTop: 8, width: "100%" }}
+                value={integrationSettings.magpiePath || ""}
+                onChange={(event) => setIntegrationSettings({ ...integrationSettings, magpiePath: event.target.value })}
+                placeholder="例如 E:\\magpie\\Magpie.exe"
+                spellCheck={false}
+              />
+              <p className="sheet-hint" style={{ marginTop: 6 }}>仅启动 Magpie，不修改其配置、不注入热键，也不计入游戏时长。</p>
             </div>
             <div className="modal-actions">
               <button className="soft-button" onClick={() => setTheme(defaultTheme)}>恢复默认</button>

@@ -50,6 +50,11 @@ export interface LaunchResult {
   startedAt?: string;
 }
 
+export interface IntegrationSettings {
+  magpieEnabled?: boolean;
+  magpiePath?: string;
+}
+
 export interface PlaySessionEndedEvent {
   gameId: string;
   sessionId: string;
@@ -117,7 +122,7 @@ export interface LauncherApi {
   findCoverCandidates: (game: Game) => Promise<CoverCandidate[]>;
   lookupBangumiRating: (game: Game) => Promise<Partial<Game>>;
   readImageDataUrl: (path: string) => Promise<string>;
-  launchGame: (game: Game) => Promise<LaunchResult>;
+  launchGame: (game: Game, integrationSettings?: IntegrationSettings) => Promise<LaunchResult>;
   onPlaySessionEnded: (callback: (event: PlaySessionEndedEvent) => void) => () => void;
 }
 

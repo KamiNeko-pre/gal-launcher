@@ -7,6 +7,7 @@ import type {
   MetadataCandidate,
   PickedLaunchFile,
   PlaySessionEndedEvent
+  ,IntegrationSettings
 } from "./types";
 import type { ThemeDefinition } from "./theme";
 import { loadThemeSettings } from "./theme";
@@ -55,6 +56,9 @@ export function useLibrary() {
   const [fadingImage, setFadingImage] = useState<string | null>(null);
   const [tagFilter, setTagFilter] = useState<string | null>(null);
   const [ctxMenu, setCtxMenu] = useState<{ game: Game; x: number; y: number } | null>(null);
+  const [integrationSettings, setIntegrationSettings] = useState<IntegrationSettings>(() => {
+    try { return JSON.parse(localStorage.getItem("gal-launcher-integrations") || "{}"); } catch { return {}; }
+  });
   const shelfRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -94,6 +98,10 @@ export function useLibrary() {
   useEffect(() => {
     localStorage.setItem("gal-launcher-theme", JSON.stringify({ id: theme.id }));
   }, [theme]);
+
+  useEffect(() => {
+    localStorage.setItem("gal-launcher-integrations", JSON.stringify(integrationSettings));
+  }, [integrationSettings]);
 
   useEffect(() => {
     return window.galLauncher.onPlaySessionEnded((event: PlaySessionEndedEvent) => {
@@ -320,7 +328,7 @@ export function useLibrary() {
 
   async function launch(game: Game) {
     try {
-      const result = await window.galLauncher.launchGame(game);
+      const result = await window.galLauncher.launchGame(game, integrationSettings);
       const startedAt = result.startedAt ?? nowIso();
       setGames((current) =>
         current.map((item) =>
@@ -528,6 +536,7 @@ export function useLibrary() {
     saveDraft,
     chooseImage
     ,retryBangumiRating
+    ,integrationSettings, setIntegrationSettings
   };
 }
 

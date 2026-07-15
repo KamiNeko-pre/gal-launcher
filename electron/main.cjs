@@ -11,6 +11,7 @@ const {
   ratingPatchForNoMatch
 } = require("./metadata/bangumi.cjs");
 const { translateLongText } = require("./metadata/translation.cjs");
+const { launchWithIntegration } = require("./integrations/magpie.cjs");
 
 // Route external requests through Electron's network stack so the session
 // proxy configured below also applies to metadata and translation providers.
@@ -2359,10 +2360,19 @@ function finishPlaySession(sessionId) {
 }
 
 
-ipcMain.handle("game:launch", async (_event, game) => {
+ipcMain.handle("game:launch", async (_event, game, integrationSettings = {}) => {
   if (!game?.executablePath || !fs.existsSync(game.executablePath)) {
     throw new Error("Launch file does not exist");
   }
+
+  await launchWithIntegration(game, integrationSettings, {
+    spawnImpl: spawn,
+    isRunning: () => new Promise((resolve) => {
+      execFile("tasklist", ["/FI", "IMAGENAME eq Magpie.exe", "/NH"], { windowsHide: true }, (_error, stdout = "") => {
+        resolve(/Magpie\.exe/i.test(stdout));
+      });
+    })
+  });
 
   const startedAt = new Date().toISOString();
   const sessionId = crypto.randomUUID();

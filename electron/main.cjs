@@ -886,14 +886,14 @@ async function searchMetadataCandidates(game, keyword = "") {
     }));
 }
 
-async function hydrateMetadataCandidate(game, candidate) {
+async function hydrateMetadataCandidate(game, candidate, { forceTranslation = false } = {}) {
   const vn = (await getVndbById(candidate.sourceId)) || (await searchVndb(candidate.title || "")).find((item) => item.id === candidate.sourceId);
   if (!vn) return { confidence: 0, source: "none" };
   const coverPath = vn.image?.url || "";
   const descriptionOriginal = stripMarkup(vn.description || "");
   const descriptionSourceHash = crypto.createHash("sha256").update(descriptionOriginal, "utf8").digest("hex");
   let translation = { text: descriptionOriginal, status: "failed" };
-  if (game.descriptionSourceHash === descriptionSourceHash && game.descriptionZh) {
+  if (!forceTranslation && game.descriptionSourceHash === descriptionSourceHash && game.descriptionZh) {
     translation = { text: game.descriptionZh, status: "success" };
   } else {
     try { translation = await translateToChinese(descriptionOriginal); } catch { /* preserve the original description */ }
@@ -2110,7 +2110,14 @@ ipcMain.handle("game:rescanMetadata", async (_event, game) => {
   return scanGameMetadata(installPath, game.executablePath);
 });
 
-ipcMain.handle("game:enrichOnlineMetadata", async (_event, game) => enrichOnlineMetadata(game));
+ipcMain.handle("game:enrichOnlineMetadata", async (_event, game, options = {}) => {
+  if (options.forceTranslation) {
+    const candidates = await searchMetadataCandidates(game, "");
+    const best = candidates[0];
+    return best ? hydrateMetadataCandidate(game, best, { forceTranslation: true }) : { confidence: 0, source: "none" };
+  }
+  return enrichOnlineMetadata(game);
+});
 
 ipcMain.handle("game:searchMetadataCandidates", async (_event, game, keyword) => searchMetadataCandidates(game, keyword));
 

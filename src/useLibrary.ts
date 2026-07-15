@@ -335,6 +335,17 @@ export function useLibrary() {
     }
   }
 
+  async function retryTranslation(game: Game) {
+    setNotice("正在重新翻译简介");
+    try {
+      const metadata = await window.galLauncher.enrichOnlineMetadata(game, { forceTranslation: true });
+      persistGame(mergeMetadata(game, metadata));
+      setNotice("简介翻译已更新");
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "翻译失败，已保留原文");
+    }
+  }
+
   async function rescanMetadata(game: Game) {
     try {
       const metadata = await window.galLauncher.rescanMetadata(game);
@@ -519,6 +530,7 @@ export function useLibrary() {
     saveDraft,
     chooseImage
     ,retryBangumiRating
+    ,retryTranslation
     ,integrationSettings, setIntegrationSettings
   };
 }

@@ -34,6 +34,7 @@ interface SideSheetProps {
   onEdit: (game: Game) => void;
   onDelete: (game: Game) => void;
   onRetryBangumiRating: (game: Game) => void;
+  onRetryTranslation: (game: Game) => void;
   isSearchingMetadata: boolean;
   isFindingCovers: boolean;
   metadataKeyword: string;
@@ -49,6 +50,7 @@ export function SideSheet({
   onEdit,
   onDelete,
   onRetryBangumiRating,
+  onRetryTranslation,
   isSearchingMetadata,
   isFindingCovers,
   metadataKeyword
@@ -229,7 +231,10 @@ export function SideSheet({
                 {game.description ? (
                   <>
                     {game.translationStatus === "failed" && (
-                      <p className="sheet-hint" style={{ marginTop: 12 }}>翻译暂不可用，当前显示原文</p>
+                      <>
+                        <p className="sheet-hint" style={{ marginTop: 12 }}>翻译暂不可用，当前显示原文</p>
+                        <button className="text-button" onClick={() => onRetryTranslation(game)} style={{ marginTop: 6 }}>重新翻译</button>
+                      </>
                     )}
                     {(game.descriptionOriginal || game.descriptionZh) && (
                       <button className="text-button" onClick={() => setShowOriginalDescription((value) => !value)} style={{ marginTop: 8 }}>

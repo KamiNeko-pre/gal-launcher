@@ -59,6 +59,7 @@ function App() {
     applyMetadataCandidate,
     launch,
     retryBangumiRating,
+    retryTranslation,
     integrationSettings, setIntegrationSettings,
     rescanMetadata,
     findCovers,
@@ -108,6 +109,7 @@ function App() {
         onEdit={startEdit}
         onDelete={deleteGame}
         onRetryBangumiRating={retryBangumiRating}
+        onRetryTranslation={retryTranslation}
         isSearchingMetadata={isSearchingMetadata}
         isFindingCovers={isFindingCovers}
         metadataKeyword={metadataKeyword}

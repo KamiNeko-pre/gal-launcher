@@ -125,7 +125,7 @@ export interface LauncherApi {
   pickImage: () => Promise<string | null>;
   pickFolder: () => Promise<string | null>;
   rescanMetadata: (game: Game) => Promise<Partial<PickedLaunchFile>>;
-  enrichOnlineMetadata: (game: Game) => Promise<Partial<PickedLaunchFile> & { confidence?: number; source?: string; sourceId?: string }>;
+  enrichOnlineMetadata: (game: Game, options?: { forceTranslation?: boolean }) => Promise<Partial<PickedLaunchFile> & { confidence?: number; source?: string; sourceId?: string }>;
   searchMetadataCandidates: (game: Game, keyword?: string) => Promise<MetadataCandidate[]>;
   applyMetadataCandidate: (game: Game, candidate: MetadataCandidate) => Promise<Partial<PickedLaunchFile> & { confidence?: number; source?: string; sourceId?: string }>;
   findCoverCandidates: (game: Game) => Promise<CoverCandidate[]>;

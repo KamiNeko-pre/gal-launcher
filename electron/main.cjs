@@ -13,6 +13,7 @@ const {
 const { translateLongText } = require("./metadata/translation.cjs");
 const { launchWithIntegration, prepareMagpieScaling } = require("./integrations/magpie.cjs");
 const { createLibraryRepository } = require("./library/repository.cjs");
+const { createSessionJournal } = require("./library/journal.cjs");
 
 if (process.env.GAL_LAUNCHER_PERF_USER_DATA) {
   app.setPath("userData", path.resolve(process.env.GAL_LAUNCHER_PERF_USER_DATA));
@@ -26,6 +27,8 @@ const networkClient = createNetworkClient({
 const fetch = (...args) => networkClient.fetch(...args);
 const libraryRepository = createLibraryRepository({ getUserDataPath: () => app.getPath("userData") });
 const { readLibrary, writeLibrary, backupPayload } = libraryRepository;
+const sessionJournal = createSessionJournal({ getUserDataPath: () => app.getPath("userData") });
+const { read: readJournal, write: writeJournal, add: journalAdd, remove: journalRemove, snapshot: journalSnapshot } = sessionJournal;
 
 const perfStartedAt = Date.now();
 const perfMarks = {};
@@ -120,38 +123,6 @@ function createWindow() {
     mainWindow.loadURL(process.env.VITE_DEV_SERVER_URL);
   } else {
     mainWindow.loadFile(path.join(__dirname, "..", "dist", "index.html"));
-  }
-}
-
-function journalFile() {
-  return path.join(app.getPath("userData"), "library", "play-session-journal.json");
-}
-
-function readJournal() {
-  try {
-    return JSON.parse(fs.readFileSync(journalFile(), "utf8"));
-  } catch {
-    return {};
-  }
-}
-
-function journalAdd(gameId, sessionId, startedAt, startedMs) {
-  const journal = readJournal();
-  journal[sessionId] = { gameId, sessionId, startedAt, startedMs };
-  writeJsonFile(journalFile(), journal);
-}
-
-function journalRemove(sessionId) {
-  const journal = readJournal();
-  delete journal[sessionId];
-  writeJsonFile(journalFile(), journal);
-}
-
-function journalSnapshot(sessionId, seconds) {
-  const journal = readJournal();
-  if (journal[sessionId]) {
-    journal[sessionId].snapshotSeconds = seconds;
-    writeJsonFile(journalFile(), journal);
   }
 }
 
@@ -302,7 +273,7 @@ async function normalizeLibraryForRuntime(games) {
   }
 
   if (changed) writeLibrary(normalized);
-  if (journalChanged) writeJsonFile(journalFile(), journal);
+  if (journalChanged) writeJournal(journal);
   return normalized;
 }
 

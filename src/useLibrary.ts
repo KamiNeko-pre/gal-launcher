@@ -12,6 +12,16 @@ import type { ThemeDefinition } from "./theme";
 import { loadThemeSettings } from "./theme";
 import { statuses, nowIso, makeGame, formatPlayTime, getTotalPlaySeconds } from "./utils";
 
+function shouldLookupBangumiRating(game: Game, now = Date.now()) {
+  const nextRetryAt = Date.parse(game.bgmRatingNextRetryAt || "");
+  if (Number.isFinite(nextRetryAt) && nextRetryAt > now) return false;
+  if (game.bgmRatingStatus === "success") return false;
+  if (game.bgmRatingStatus === "no_match" && game.bgmRatingCheckedAt && (!Number.isFinite(nextRetryAt) || nextRetryAt > now)) return false;
+  // Keep successful records created before the status field was introduced.
+  if (!game.bgmRatingStatus && (game.bgmId ?? 0) > 0 && (game.bgmScoreCount ?? 0) > 0 && game.bgmRatingCheckedAt) return false;
+  return true;
+}
+
 export function useLibrary() {
   const [games, setGames] = useState<Game[]>([]);
   const [selectedId, setSelectedId] = useState("");
@@ -153,7 +163,7 @@ export function useLibrary() {
   const usesCoverFallback = selected ? !selected.backgroundPath || selected.backgroundPath === selected.coverPath : false;
 
   useEffect(() => {
-    if (!selected || selected.bgmRatingCheckedAt) return;
+    if (!selected || !shouldLookupBangumiRating(selected)) return;
     let cancelled = false;
     window.galLauncher.lookupBangumiRating(selected).then((rating) => {
       if (cancelled) return;
@@ -166,10 +176,18 @@ export function useLibrary() {
       );
     }).catch(() => {
       if (cancelled) return;
+      const attemptedAt = nowIso();
+      const retryAt = new Date(Date.now() + 30_000).toISOString();
       setGames((current) =>
         current.map((game) =>
           game.id === selected.id
-            ? { ...game, bgmScore: 0, bgmScoreCount: 0, bgmRank: 0, bgmId: 0, bgmRatingCheckedAt: nowIso(), updatedAt: nowIso() }
+            ? {
+                ...game,
+                bgmRatingStatus: "network_error",
+                bgmRatingLastAttemptAt: attemptedAt,
+                bgmRatingNextRetryAt: retryAt,
+                updatedAt: attemptedAt
+              }
             : game
         )
       );
@@ -246,11 +264,14 @@ export function useLibrary() {
       coverPath: game.coverPath || metadata.coverPath || "",
       backgroundPath: game.backgroundPath || metadata.backgroundPath || metadata.coverPath || game.coverPath,
       tags: metadata.tags?.length ? metadata.tags : game.tags,
-      bgmRatingCheckedAt: undefined,
       bgmScore: 0,
       bgmScoreCount: 0,
       bgmRank: 0,
-      bgmId: 0
+      bgmId: 0,
+      bgmRatingStatus: undefined,
+      bgmRatingCheckedAt: undefined,
+      bgmRatingLastAttemptAt: undefined,
+      bgmRatingNextRetryAt: undefined
     };
   }
 

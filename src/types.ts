@@ -26,7 +26,10 @@ export interface Game {
   bgmScoreCount?: number;
   bgmRank?: number;
   bgmId?: number;
+  bgmRatingStatus?: "success" | "no_match" | "network_error" | "rate_limited" | "parse_error" | "stale";
   bgmRatingCheckedAt?: string;
+  bgmRatingLastAttemptAt?: string;
+  bgmRatingNextRetryAt?: string;
   playCount: number;
   totalPlaySeconds?: number;
   currentSessionId?: string | null;

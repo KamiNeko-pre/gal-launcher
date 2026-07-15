@@ -5,6 +5,11 @@ const crypto = require("node:crypto");
 const { spawn, execFile } = require("node:child_process");
 const { pathToFileURL } = require("node:url");
 const { createNetworkClient } = require("./network/client.cjs");
+const {
+  ratingPatchForFailure,
+  ratingPatchForMatch,
+  ratingPatchForNoMatch
+} = require("./metadata/bangumi.cjs");
 
 // Route external requests through Electron's network stack so the session
 // proxy configured below also applies to metadata and translation providers.
@@ -1198,7 +1203,7 @@ async function searchBangumi(query) {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36 (local personal use)"
+      "User-Agent": `Gal Launcher/${app.getVersion()} (https://github.com/KamiNeko-pre/gal-launcher)`
     },
     body: JSON.stringify({
       keyword: query,
@@ -1208,8 +1213,10 @@ async function searchBangumi(query) {
     signal: AbortSignal.timeout(6000)
   });
   if (!response.ok) {
-    console.log(`[bangumi] API error ${response.status} for "${query}": ${response.statusText}`);
-    return [];
+    const error = new Error(`Bangumi API returned ${response.status}`);
+    error.code = response.status === 429 ? "rate_limited" : "network_error";
+    error.httpStatus = response.status;
+    throw error;
   }
   return (await response.json()).data || [];
 }
@@ -1244,8 +1251,10 @@ async function searchBangumiWeb(query) {
     signal: AbortSignal.timeout(9000)
   });
   if (!response.ok) {
-    console.log(`[bangumi] web error ${response.status} for "${query}": ${response.statusText}`);
-    return [];
+    const error = new Error(`Bangumi web returned ${response.status}`);
+    error.code = response.status === 429 ? "rate_limited" : "network_error";
+    error.httpStatus = response.status;
+    throw error;
   }
   const html = await response.text();
   const items = parseBangumiSearchItems(html, query);
@@ -1254,10 +1263,7 @@ async function searchBangumiWeb(query) {
 }
 
 async function searchBangumiApiItems(query) {
-  const results = await searchBangumi(query).catch((err) => {
-    console.log(`[bangumi] API fetch error for "${query}": ${err.message}`);
-    return [];
-  });
+  const results = await searchBangumi(query);
   console.log(`[bangumi] API "${query}": ${results.length} items found`);
   return results
     .map((item) => {
@@ -1289,8 +1295,16 @@ async function lookupBangumiRating(game) {
     ])
   );
   let best = null;
+  let fulfilledCount = 0;
+  let rejectedCount = 0;
+  let sawRateLimit = false;
   for (const item of settled) {
-    if (item.status !== "fulfilled") continue;
+    if (item.status !== "fulfilled") {
+      rejectedCount++;
+      sawRateLimit = sawRateLimit || item.reason?.code === "rate_limited";
+      continue;
+    }
+    fulfilledCount++;
     for (const result of item.value.items.slice(0, 4)) {
       console.log(`[bangumi] candidate q="${item.value.query}" src=${item.value.source} title="${result.title}" score=${result.score} count=${result.scoreCount} confidence=${result.confidence.toFixed(3)}`);
       if (!best || result.confidence > best.confidence || (result.confidence === best.confidence && result.scoreCount > best.scoreCount)) {
@@ -1299,20 +1313,20 @@ async function lookupBangumiRating(game) {
     }
   }
 
+  if (fulfilledCount === 0 || (rejectedCount > 0 && !best)) {
+    const status = sawRateLimit ? "rate_limited" : "network_error";
+    console.log(`[bangumi] RETRYABLE ${status} for "${game.title}" (${rejectedCount} failed requests)`);
+    return ratingPatchForFailure(status);
+  }
+
   if (!best || best.confidence < 0.72 || !best.score || best.scoreCount < 1) {
     const reason = !best ? "no results" : best.confidence < 0.72 ? `confidence ${best.confidence.toFixed(3)} < 0.72` : `score=${best.score} count=${best.scoreCount}`;
     console.log(`[bangumi] MISS for "${game.title}": ${reason}`);
-    return { bgmScore: 0, bgmScoreCount: 0, bgmRank: 0, bgmId: 0, bgmRatingCheckedAt: new Date().toISOString() };
+    return ratingPatchForNoMatch();
   }
 
   console.log(`[bangumi] HIT for "${game.title}": score=${best.score} count=${best.scoreCount} confidence=${best.confidence.toFixed(3)}`);
-  return {
-    bgmScore: best.score,
-    bgmScoreCount: best.scoreCount,
-    bgmRank: best.rank || 0,
-    bgmId: best.id,
-    bgmRatingCheckedAt: new Date().toISOString()
-  };
+  return ratingPatchForMatch(best);
 }
 
 function imageUrlsFromHtml(html, pageUrl) {

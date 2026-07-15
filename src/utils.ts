@@ -33,6 +33,8 @@ export function normalizeTags(raw: string) {
 }
 
 export function formatBgmRating(game: Game) {
+  if (game.bgmRatingStatus === "network_error" || game.bgmRatingStatus === "rate_limited" || game.bgmRatingStatus === "parse_error") return "暂时无法连接";
+  if (game.bgmRatingStatus === "no_match") return "未找到可靠匹配";
   if (!game.bgmRatingCheckedAt) return "查询中";
   if (!game.bgmScore) return "暂无";
   const count = game.bgmScoreCount ? ` / ${game.bgmScoreCount}人` : "";

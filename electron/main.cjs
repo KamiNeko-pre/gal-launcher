@@ -1214,6 +1214,25 @@ async function searchBangumiApiItems(query) {
 }
 
 async function lookupBangumiRating(game) {
+  if (Number(game?.bgmId) > 0) {
+    try {
+      const response = await fetch(`https://api.bgm.tv/v0/subjects/${Number(game.bgmId)}`, {
+        headers: { "User-Agent": `Gal Launcher/${app.getVersion()} (https://github.com/KamiNeko-pre/gal-launcher)` },
+        signal: AbortSignal.timeout(5000)
+      });
+      if (!response.ok) {
+        const error = new Error(`Bangumi subject returned ${response.status}`);
+        error.code = response.status === 429 ? "rate_limited" : "network_error";
+        throw error;
+      }
+      const subject = await response.json();
+      const score = Number(subject.rating?.score || 0);
+      const scoreCount = Number(subject.rating?.total || 0);
+      if (score > 0 && scoreCount > 0) return ratingPatchForMatch({ id: Number(game.bgmId), score, scoreCount, rank: Number(subject.rating?.rank || 0) });
+    } catch (error) {
+      return ratingPatchForFailure(error.code === "rate_limited" ? "rate_limited" : "network_error");
+    }
+  }
   const queries = rawTitleQueriesFor(game).slice(0, 8);
   console.log(`[bangumi] lookup "${game.title}" queries:`, queries);
   const settled = await Promise.allSettled(

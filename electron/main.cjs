@@ -11,7 +11,7 @@ const {
   ratingPatchForNoMatch
 } = require("./metadata/bangumi.cjs");
 const { translateLongText } = require("./metadata/translation.cjs");
-const { launchWithIntegration } = require("./integrations/magpie.cjs");
+const { launchWithIntegration, prepareMagpieScaling } = require("./integrations/magpie.cjs");
 
 // Route external requests through Electron's network stack so the session
 // proxy configured below also applies to metadata and translation providers.
@@ -2374,6 +2374,44 @@ function finishPlaySession(sessionId) {
 }
 
 
+function runPowerShell(script) {
+  return new Promise((resolve, reject) => {
+    execFile("powershell.exe", ["-NoProfile", "-NonInteractive", "-Command", script], { windowsHide: true }, (error, stdout = "") => {
+      if (error) reject(error); else resolve(stdout.trim());
+    });
+  });
+}
+
+async function readGameWindowState(pid) {
+  const script = "$p=Get-Process -Id " + Number(pid) + " -ErrorAction SilentlyContinue; if(-not $p){exit 2}; $h=$p.MainWindowHandle; if($h -eq 0){@{hasWindow=$false}|ConvertTo-Json -Compress; exit}; Add-Type -TypeDefinition 'using System; using System.Runtime.InteropServices; public static class W { [DllImport(\"user32.dll\")] public static extern bool GetWindowRect(IntPtr h, out R r); [DllImport(\"user32.dll\")] public static extern IntPtr GetWindowLongPtr(IntPtr h, int i); [StructLayout(LayoutKind.Sequential)] public struct R { public int L; public int T; public int R; public int B; } }'; $r=New-Object W+R; [W]::GetWindowRect($h,[ref]$r)|Out-Null; $s=[W]::GetWindowLongPtr($h,-16).ToInt64(); Add-Type -AssemblyName System.Windows.Forms; $screen=[System.Windows.Forms.Screen]::PrimaryScreen.Bounds; @{hasWindow=$true; windowed=(!(($r.R-$r.L) -ge $screen.Width -and ($r.B-$r.T) -ge $screen.Height -and (($s -band 0x80000000) -ne 0)))}|ConvertTo-Json -Compress";
+  try { return JSON.parse(await runPowerShell(script)); } catch { return { hasWindow: false }; }
+}
+
+async function waitForGameWindow(pid, timeoutMs = 15000) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const state = await readGameWindowState(pid);
+    if (state.hasWindow) return state;
+    await new Promise((resolve) => setTimeout(resolve, 250));
+  }
+  return { hasWindow: false };
+}
+
+function toSendKeys(shortcut) {
+  const parts = String(shortcut).split("+").map((part) => part.trim()).filter(Boolean);
+  if (parts.length < 2) throw new Error("Magpie 快捷键格式应为 Alt+Shift+Q");
+  const key = parts.pop().toUpperCase();
+  const modifiers = parts.map((part) => ({ ALT: "%", CTRL: "^", CONTROL: "^", SHIFT: "+" }[part.toUpperCase()])).join("");
+  if (!modifiers || /WIN|META/i.test(parts.join(" "))) throw new Error("暂不支持 Win 键，请在 Magpie 中改用 Alt/Ctrl/Shift 组合");
+  const encodedKey = /^F(?:[1-9]|1[0-2])$/.test(key) ? `{${key}}` : key.length === 1 ? key : `{${key}}`;
+  return modifiers + encodedKey;
+}
+
+async function sendMagpieShortcut(shortcut, pid) {
+  const keys = toSendKeys(shortcut).replace(/'/g, "''");
+  await runPowerShell("$w=New-Object -ComObject WScript.Shell; if(-not $w.AppActivate(" + Number(pid) + ")){exit 3}; Start-Sleep -Milliseconds 150; $w.SendKeys('" + keys + "')");
+}
+
 ipcMain.handle("game:launch", async (_event, game, integrationSettings = {}) => {
   if (!game?.executablePath || !fs.existsSync(game.executablePath)) {
     throw new Error("Launch file does not exist");
@@ -2392,6 +2430,7 @@ ipcMain.handle("game:launch", async (_event, game, integrationSettings = {}) => 
   const sessionId = crypto.randomUUID();
   const ext = path.extname(game.executablePath).toLowerCase();
   if (ext === ".lnk") {
+    if (integrationSettings.magpieEnabled) throw new Error("Magpie 联动无法验证快捷方式目标窗口，请直接选择游戏 exe");
     await shell.openPath(game.executablePath);
     startPlaySession(game, sessionId, startedAt, null);
     return { launched: true, sessionId, startedAt };
@@ -2404,6 +2443,18 @@ ipcMain.handle("game:launch", async (_event, game, integrationSettings = {}) => 
     stdio: "ignore",
     windowsHide: false
   });
+
+  if (integrationSettings.magpieEnabled) {
+    try {
+      await prepareMagpieScaling(child.pid, integrationSettings, {
+        waitForWindow: (pid) => waitForGameWindow(pid),
+        sendShortcut: (shortcut, pid) => sendMagpieShortcut(shortcut, pid)
+      });
+    } catch (error) {
+      try { child.kill(); } catch {}
+      throw error;
+    }
+  }
 
   startPlaySession(game, sessionId, startedAt, [child.pid]);
 

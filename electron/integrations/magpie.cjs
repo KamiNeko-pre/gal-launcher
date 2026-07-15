@@ -24,4 +24,14 @@ async function launchWithIntegration(game, settings = {}, deps = {}) {
   return { integration: "magpie", magpieStarted: result.started, path: result.path };
 }
 
-module.exports = { validateMagpiePath, ensureMagpieRunning, launchWithIntegration };
+async function prepareMagpieScaling(processId, settings = {}, { waitForWindow, sendShortcut } = {}) {
+  if (!settings.magpieEnabled) return { integration: "disabled" };
+  if (!settings.magpieShortcut) throw Object.assign(new Error("未配置 Magpie 窗口化缩放快捷键"), { code: "shortcut_missing" });
+  const state = await waitForWindow(processId);
+  if (!state?.hasWindow) throw Object.assign(new Error("游戏没有创建可用窗口"), { code: "window_missing" });
+  if (!state.windowed) throw Object.assign(new Error("游戏未以窗口模式启动，请先在游戏内设置为窗口模式"), { code: "window_mode_required" });
+  await sendShortcut(settings.magpieShortcut, processId);
+  return { integration: "magpie", windowed: true, shortcut: settings.magpieShortcut };
+}
+
+module.exports = { validateMagpiePath, ensureMagpieRunning, launchWithIntegration, prepareMagpieScaling };

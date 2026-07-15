@@ -53,6 +53,7 @@ export interface LaunchResult {
 export interface IntegrationSettings {
   magpieEnabled?: boolean;
   magpiePath?: string;
+  magpieShortcut?: string;
 }
 
 export interface PlaySessionEndedEvent {

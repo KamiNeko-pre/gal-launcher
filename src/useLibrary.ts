@@ -58,7 +58,10 @@ export function useLibrary() {
   const [ctxMenu, setCtxMenu] = useState<{ game: Game; x: number; y: number } | null>(null);
   const hydratedRef = useRef(false);
   const [integrationSettings, setIntegrationSettings] = useState<IntegrationSettings>(() => {
-    try { return JSON.parse(localStorage.getItem("gal-launcher-integrations") || "{}"); } catch { return {}; }
+    try {
+      const saved = JSON.parse(localStorage.getItem("gal-launcher-integrations") || "{}");
+      return { magpieShortcut: "Alt+Shift+Q", ...saved };
+    } catch { return { magpieShortcut: "Alt+Shift+Q" }; }
   });
   const shelfRef = useRef<HTMLDivElement | null>(null);
 

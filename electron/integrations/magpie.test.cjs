@@ -1,6 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { validateMagpiePath, ensureMagpieRunning, launchWithIntegration } = require("./magpie.cjs");
+const { validateMagpiePath, ensureMagpieRunning, launchWithIntegration, prepareMagpieScaling } = require("./magpie.cjs");
 
 const fakeFs = (exists) => ({ existsSync: () => exists });
 
@@ -35,4 +35,25 @@ test("disabled integration does not touch the process table", async () => {
   const result = await launchWithIntegration({}, { magpieEnabled: false }, { isRunning: async () => { called = true; } });
   assert.equal(result.integration, "disabled");
   assert.equal(called, false);
+});
+
+test("scaling requires a windowed game and a configured shortcut", async () => {
+  await assert.rejects(
+    prepareMagpieScaling(1, { magpieEnabled: true }, { waitForWindow: async () => ({ hasWindow: true, windowed: true }) }),
+    (error) => error.code === "shortcut_missing"
+  );
+  await assert.rejects(
+    prepareMagpieScaling(1, { magpieEnabled: true, magpieShortcut: "Alt+Shift+Q" }, { waitForWindow: async () => ({ hasWindow: true, windowed: false }) }),
+    (error) => error.code === "window_mode_required"
+  );
+});
+
+test("scaling sends the configured shortcut only after window validation", async () => {
+  const calls = [];
+  const result = await prepareMagpieScaling(42, { magpieEnabled: true, magpieShortcut: "Ctrl+Shift+F9" }, {
+    waitForWindow: async (pid) => ({ hasWindow: pid === 42, windowed: true }),
+    sendShortcut: async (...args) => calls.push(args)
+  });
+  assert.equal(result.windowed, true);
+  assert.deepEqual(calls, [["Ctrl+Shift+F9", 42]]);
 });

@@ -322,6 +322,13 @@ function App() {
                 placeholder="例如 E:\\magpie\\Magpie.exe"
                 spellCheck={false}
               />
+              <input
+                style={{ marginTop: 8, width: "100%" }}
+                value={integrationSettings.magpieShortcut || ""}
+                onChange={(event) => setIntegrationSettings({ ...integrationSettings, magpieShortcut: event.target.value })}
+                placeholder="窗口化缩放快捷键，例如 Alt+Shift+Q"
+                spellCheck={false}
+              />
               <p className="sheet-hint" style={{ marginTop: 6 }}>仅启动 Magpie，不修改其配置、不注入热键，也不计入游戏时长。</p>
             </div>
             <div className="modal-actions">

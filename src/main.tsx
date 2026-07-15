@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { Suspense, useEffect } from "react";
 import { createRoot } from "react-dom/client";
 import {
   Edit3,
@@ -14,18 +14,9 @@ import { themePresets, defaultTheme } from "./theme";
 import { statuses } from "./utils";
 import { useLibrary } from "./useLibrary";
 import { SideSheet } from "./components/SideSheet";
-import { CinemaLayout } from "./layouts/CinemaLayout";
-import { EditorialLayout } from "./layouts/EditorialLayout";
-import { ArcadeLayout } from "./layouts/ArcadeLayout";
-import { AtelierLayout } from "./layouts/AtelierLayout";
-import { AuroraLayout } from "./layouts/AuroraLayout";
-import { MonoLuxLayout } from "./layouts/MonoLuxLayout";
+import { layouts, loadThemeAssets } from "./layouts/layoutRegistry";
+import { LayoutFallback } from "./components/LayoutFallback";
 import "./styles.css";
-import "./themes/editorial.css";
-import "./themes/arcade.css";
-import "./themes/atelier.css";
-import "./themes/aurora.css";
-import "./themes/monolux.css";
 
 const sourceColors: Record<string, string> = {
   "Steam": "#1a9fff",
@@ -38,15 +29,6 @@ const sourceColors: Record<string, string> = {
   "本地文件夹": "#ff9800",
   "当前横版图": "#9c27b0",
   "Bangumi": "#f44336"
-};
-
-const layouts: Partial<Record<string, typeof CinemaLayout>> = {
-  cinema: CinemaLayout,
-  editorial: EditorialLayout,
-  arcade: ArcadeLayout,
-  atelier: AtelierLayout,
-  aurora: AuroraLayout,
-  monolux: MonoLuxLayout
 };
 
 function App() {
@@ -101,13 +83,16 @@ function App() {
       document.head.appendChild(link);
     }
     link.href = theme.fontHref;
+    void loadThemeAssets(theme.id);
   }, [theme]);
 
-  const Layout = layouts[theme.id] ?? CinemaLayout;
+  const Layout = layouts[theme.id] ?? layouts.cinema;
 
   return (
     <div className={`app-shell ${usesCoverFallback ? "cover-fallback-mode" : "keyvisual-mode"} ${isInfoOpen ? "info-open" : ""}`}>
-      <Layout lib={lib} />
+      <Suspense fallback={<LayoutFallback />}>
+        <Layout lib={lib} />
+      </Suspense>
 
       <SideSheet
         game={selected}

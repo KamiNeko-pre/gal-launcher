@@ -213,7 +213,12 @@ export function SideSheet({
                 ) : null}
 
                 {game.description ? (
-                  <p className="sheet-description" style={{ marginTop: 12 }}>{game.description}</p>
+                  <>
+                    {game.translationStatus === "failed" && (
+                      <p className="sheet-hint" style={{ marginTop: 12 }}>翻译暂不可用，当前显示原文</p>
+                    )}
+                    <p className="sheet-description" style={{ marginTop: 12 }}>{game.description}</p>
+                  </>
                 ) : (
                   <p className="sheet-hint" style={{ marginTop: 12 }}>暂无简介</p>
                 )}

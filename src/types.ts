@@ -12,6 +12,10 @@ export interface Game {
   title: string;
   originalTitle: string;
   description: string;
+  descriptionOriginal?: string;
+  descriptionZh?: string;
+  translationStatus?: "success" | "already_zh" | "failed" | "empty";
+  translationUpdatedAt?: string;
   developer: string;
   releaseDate: string;
   installPath: string;
@@ -60,6 +64,10 @@ export interface PickedLaunchFile {
   title: string;
   originalTitle?: string;
   description?: string;
+  descriptionOriginal?: string;
+  descriptionZh?: string;
+  translationStatus?: "success" | "already_zh" | "failed" | "empty";
+  translationUpdatedAt?: string;
   developer?: string;
   releaseDate?: string;
   coverPath?: string;

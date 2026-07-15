@@ -251,14 +251,18 @@ export function useLibrary() {
   function mergeMetadata(game: Game, metadata: Partial<PickedLaunchFile>) {
     const newDescription = metadata.description || "";
     const cjk = /[\u3400-\u9fff]/;
-    const oldHasCjk = cjk.test(game.description || "");
-    const newHasCjk = cjk.test(newDescription);
-    const description = newHasCjk || !newDescription ? newDescription || game.description : (oldHasCjk ? game.description : newDescription);
+    const oldChineseDescription = game.descriptionZh || (cjk.test(game.description || "") ? game.description : "");
+    const translatedDescription = metadata.descriptionZh || (metadata.translationStatus === "success" || metadata.translationStatus === "already_zh" ? newDescription : "");
+    const description = translatedDescription || oldChineseDescription || newDescription || game.description;
     return {
       ...game,
       title: metadata.title || game.title,
       originalTitle: metadata.originalTitle || game.originalTitle,
       description,
+      descriptionOriginal: metadata.descriptionOriginal || game.descriptionOriginal || (!cjk.test(description) ? description : ""),
+      descriptionZh: translatedDescription || oldChineseDescription || undefined,
+      translationStatus: metadata.translationStatus || game.translationStatus,
+      translationUpdatedAt: metadata.translationUpdatedAt || game.translationUpdatedAt,
       developer: metadata.developer || game.developer,
       releaseDate: metadata.releaseDate || game.releaseDate,
       coverPath: game.coverPath || metadata.coverPath || "",

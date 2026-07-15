@@ -207,7 +207,7 @@ function App() {
                 : coverCandidates.map((candidate: CoverCandidate) => (
                     <button key={candidate.id} className="candidate-card" onClick={() => chooseCover(candidate)}>
                       <div className="candidate-image">
-                        {imageCache[candidate.path] ? <img src={imageCache[candidate.path]} alt="" /> : <Gamepad2 size={30} />}
+                        {imageCache[candidate.path] ? <img src={imageCache[candidate.path]} alt="" loading="lazy" decoding="async" /> : <Gamepad2 size={30} />}
                       </div>
                       <span
                         className="source-badge"
@@ -248,7 +248,7 @@ function App() {
               {metadataCandidates.map((candidate: MetadataCandidate) => (
                 <button key={`${candidate.source}-${candidate.sourceId}`} className="metadata-candidate" onClick={() => applyMetadataCandidate(candidate)}>
                   <div className="metadata-cover">
-                    {candidate.coverUrl ? <img src={candidate.coverUrl} alt="" /> : <Gamepad2 size={30} />}
+                    {candidate.coverUrl ? <img src={candidate.coverUrl} alt="" loading="lazy" decoding="async" /> : <Gamepad2 size={30} />}
                   </div>
                   <div>
                     <strong>{candidate.title}</strong>

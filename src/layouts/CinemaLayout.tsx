@@ -29,7 +29,6 @@ export function CinemaLayout({ lib }: { lib: LibraryController }) {
     fadingImage,
     filteredGames,
     collectionGames,
-    remoteImagePaths,
     counts,
     totalSeconds,
     recentGames,
@@ -44,11 +43,6 @@ export function CinemaLayout({ lib }: { lib: LibraryController }) {
 
   return (
     <>
-      <div className="image-preload" aria-hidden="true">
-        {remoteImagePaths.map((imagePath) => (
-          <img key={imagePath} src={imagePath} alt="" />
-        ))}
-      </div>
       <div className="backdrop" style={{ backgroundImage: selectedImage ? `url("${selectedImage}")` : undefined }} />
       {fadingImage && <div className="backdrop fading" style={{ backgroundImage: `url("${fadingImage}")` }} />}
       <div className="backdrop-mask" />
@@ -141,7 +135,7 @@ export function CinemaLayout({ lib }: { lib: LibraryController }) {
                     }}
                   >
                     <div className="collection-poster-art">
-                      {posterImage ? <img src={posterImage} alt="" /> : <Gamepad2 size={24} />}
+                      {posterImage ? <img src={posterImage} alt="" loading="lazy" decoding="async" /> : <Gamepad2 size={24} />}
                       {game.playCount > 0 && <span className="collection-badge">{Math.min(game.playCount, 99)}</span>}
                     </div>
                     <div className="collection-poster-title">
@@ -209,7 +203,7 @@ export function CinemaLayout({ lib }: { lib: LibraryController }) {
             {filteredGames.map((game, index) => (
               <button key={game.id} className={`shelf-card ${game.id === selected?.id ? "active" : ""}`} style={{ '--i': index } as React.CSSProperties} onClick={() => setSelectedId(game.id)} onContextMenu={(e) => openContextMenu(e, game)} aria-label={game.title}>
                 <div className="shelf-cover">
-                  {imageCache[game.coverPath] ? <img src={imageCache[game.coverPath]} alt="" /> : <Gamepad2 size={30} />}
+                  {imageCache[game.coverPath] ? <img src={imageCache[game.coverPath]} alt="" loading="lazy" decoding="async" /> : <Gamepad2 size={30} />}
                   <span>{game.title}</span>
                 </div>
               </button>

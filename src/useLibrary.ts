@@ -225,28 +225,6 @@ export function useLibrary() {
       });
   }, [games, query]);
 
-  const remoteImagePaths = useMemo(
-    () =>
-      Array.from(new Set(games.flatMap((game) => [game.backgroundPath, game.coverPath]).filter((imagePath) => /^https?:\/\//i.test(imagePath)))),
-    [games]
-  );
-
-  useEffect(() => {
-    const preloaders = remoteImagePaths.map((imagePath) => {
-      const image = new Image();
-      image.decoding = "async";
-      image.src = imagePath;
-      return image;
-    });
-
-    return () => {
-      for (const image of preloaders) {
-        image.onload = null;
-        image.onerror = null;
-      }
-    };
-  }, [remoteImagePaths]);
-
   function persistGame(next: Game) {
     setGames((current) => current.map((game) => (game.id === next.id ? { ...next, updatedAt: nowIso() } : game)));
   }
@@ -520,7 +498,6 @@ export function useLibrary() {
     usesCoverFallback,
     filteredGames,
     collectionGames,
-    remoteImagePaths,
     counts,
     totalSeconds,
     recentGames,

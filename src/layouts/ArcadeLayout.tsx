@@ -115,7 +115,7 @@ export function ArcadeLayout({ lib }: { lib: LibraryController }) {
               <div className="game-view">
                 <div className="poster" style={selectedImage ? { "--poster-img": `url("${selectedImage}")` } as CSSProperties & Record<"--poster-img", string> : undefined}>
                   {selectedImage
-                    ? <img src={selectedImage} alt="" />
+                    ? <img src={selectedImage} alt="" loading="eager" decoding="async" fetchPriority="high" />
                     : <div className="poster-empty">NO SIGNAL</div>}
                   <div className="corner tl" /><div className="corner tr" />
                   <div className="corner bl" /><div className="corner br" />

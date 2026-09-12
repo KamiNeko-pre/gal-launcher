@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { formatPlayTime } from "../utils";
+import { CollectionScopeSelect } from "../components/CollectionScopeSelect";
 import type { LibraryController } from "../useLibrary";
 
 export function EditorialLayout({ lib }: { lib: LibraryController }) {
@@ -15,6 +16,7 @@ export function EditorialLayout({ lib }: { lib: LibraryController }) {
     selectedImage,
     filteredGames,
     collectionGames,
+    openCollectionGame,
     counts,
     totalSeconds,
     recentGames,
@@ -42,7 +44,7 @@ export function EditorialLayout({ lib }: { lib: LibraryController }) {
       : list[(idx + 1) % list.length];
     if (!target || target.id === selected?.id) return;
     setTurning({ dir, targetId: target.id });
-    setTimeout(() => setSelectedId(target.id), 480);
+                    setTimeout(() => { if (viewMode === "collection") openCollectionGame(target.id); else setSelectedId(target.id); }, 480);
   }
 
   function finishFlip() {
@@ -63,15 +65,15 @@ export function EditorialLayout({ lib }: { lib: LibraryController }) {
         </div>
 
         <div className="search">
-          <i>检索</i>
+          <CollectionScopeSelect lib={lib} />
           <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="搜索标题、会社、标签" />
           <span className="kbd">/</span>
         </div>
 
         <nav className="toolbar" aria-label="功能">
-          <button className={`tool ${viewMode === "library" && statusFilter === "全部" ? "on" : ""}`} title="全部" onClick={() => { setViewMode("library"); setStatusFilter("全部"); }}><b>全</b><span>全部</span></button>
-          <button className={`tool ${viewMode === "collection" ? "on" : ""}`} title="收藏柜" onClick={() => { setViewMode("collection"); setStatusFilter("全部"); }}><b>柜</b><span>收藏</span></button>
-          <button className={`tool ${viewMode === "library" && statusFilter === "进行中" ? "on" : ""}`} title="进行中" onClick={() => { setViewMode("library"); setStatusFilter("进行中"); }}><b>读</b><span>进行</span></button>
+          <button className={`tool ${viewMode === "library" && statusFilter === "全部" ? "on" : ""}`} title="主页" onClick={() => { setViewMode("library"); setStatusFilter("全部"); }}><b>主</b><span>主页</span></button>
+          <button className={`tool ${viewMode === "collection" ? "on" : ""}`} title="书架" onClick={() => { setViewMode("collection"); setStatusFilter("全部"); }}><b>柜</b><span>书架</span></button>
+          <button className={`tool ${lib.isCategoriesOpen ? "on" : ""}`} title="分类" onClick={() => lib.setIsCategoriesOpen(true)}><b>类</b><span>分类</span></button>
           <span className="tsep" />
           <button className="tool" title="导出备份" onClick={exportBackup}><b>&darr;</b><span>导出</span></button>
           <button className="tool" title="恢复备份" onClick={importBackup}><b>&uarr;</b><span>恢复</span></button>
@@ -111,7 +113,7 @@ export function EditorialLayout({ lib }: { lib: LibraryController }) {
       )}
 
       {viewMode === "collection" ? (
-        <main className="catalog">
+        <main className="catalog" data-game-grid>
           <div className="cat-head">
             <h2>收藏柜</h2>
             <span>{collectionGames.length} 部</span>
@@ -124,7 +126,8 @@ export function EditorialLayout({ lib }: { lib: LibraryController }) {
                   <button
                     key={game.id}
                     className={`cat-card ${game.id === selected?.id ? "on" : ""}`}
-                    onClick={() => { setSelectedId(game.id); setViewMode("library"); }}
+                    data-game-id={game.id}
+                    onClick={() => openCollectionGame(game.id)}
                     onContextMenu={(e) => openContextMenu(e, game)}
                   >
                     <div className="cat-art" style={poster ? { backgroundImage: `url("${poster}")` } : undefined}>
@@ -218,8 +221,9 @@ export function EditorialLayout({ lib }: { lib: LibraryController }) {
             <button
               key={game.id}
               className={`toc ${game.id === selected?.id ? "on" : ""}`}
+              data-game-id={game.id}
               role="listitem"
-              onClick={() => { setSelectedId(game.id); if (viewMode === "collection") setViewMode("library"); }}
+              onClick={() => { if (viewMode === "collection") openCollectionGame(game.id); else setSelectedId(game.id); }}
               onContextMenu={(e) => openContextMenu(e, game)}
             >
               <span className="tn">{String(i + 1).padStart(3, "0")}</span>

@@ -2,19 +2,52 @@ const { app, BrowserWindow, dialog, ipcMain, Menu, nativeImage, net, protocol, s
 const fs = require("node:fs");
 const path = require("node:path");
 const crypto = require("node:crypto");
+const { AsyncLocalStorage } = require("node:async_hooks");
 const { spawn, execFile } = require("node:child_process");
 const { pathToFileURL } = require("node:url");
 const { createNetworkClient } = require("./network/client.cjs");
+const { applyProxyConfiguration, environmentProxyConfiguration } = require("./network/proxy.cjs");
 const {
   ratingPatchForFailure,
   ratingPatchForMatch,
   ratingPatchForNoMatch
 } = require("./metadata/bangumi.cjs");
-const { translateLongText } = require("./metadata/translation.cjs");
-const { launchWithIntegration, prepareMagpieScaling } = require("./integrations/magpie.cjs");
+const {
+  createGalgameWikiClient,
+  toMetadataCandidate: toGalgameWikiCandidate,
+  toMetadataPatch: toGalgameWikiPatch
+} = require("./metadata/galgamewiki.cjs");
+const { successfulTranslation, translateLongText } = require("./metadata/translation.cjs");
+const { prepareMagpieScaling } = require("./integrations/magpie.cjs");
+const { applyMagpiePreset, publicMagpiePresets } = require("./integrations/magpie-presets.cjs");
+const { prepareLocaleEmulator, launchLocaleEmulator } = require("./integrations/locale-emulator.cjs");
+const { isGameEnhancementEnabled } = require("./integrations/game-enhancement.cjs");
+const { createToolManager } = require("./integrations/tool-manager.cjs");
 const { createLibraryRepository } = require("./library/repository.cjs");
+const { normalizeLibraryDocument } = require("./library/bookshelves.cjs");
+const { scanLaunchCandidatesAsync } = require("./library/bulk-import.cjs");
+const { toggleWindowFullscreen } = require("./window/fullscreen.cjs");
 const { createSessionJournal } = require("./library/journal.cjs");
-const { monitorRootForGame, runningProcessIdsUnder, isPidAlive, getChildPids } = require("./play-session/process-tree.cjs");
+const { archiveGameImages } = require("./library/asset-archive.cjs");
+const { inspectLaunchTarget, stripTransientInstallationState } = require("./library/launch-target.cjs");
+const { createSaveBackup, listSaveBackups, restoreSaveBackup } = require("./library/save-manager.cjs");
+const { captureProcessBaseline, findRunningSessionPids, monitorRootForGame, getChildPids } = require("./play-session/process-tree.cjs");
+const {
+  clearSessionIfCurrent,
+  freezeSessionCompletion,
+  mergeAuthoritativePlayState,
+  persistCompletedSession,
+  persistStartedSession,
+  releaseGameLaunch,
+  reserveGameLaunch
+} = require("./play-session/session-state.cjs");
+const { getAppIconPath } = require("./window/icon-path.cjs");
+const { createDomainLimiter } = require("./search/domain-limiter.cjs");
+const { summarizeCoverSearch } = require("./search/cover-search-status.cjs");
+const { COVER_CANDIDATE_CACHE_VERSION, cachedCoverCandidates, hasCachedCoverCandidates } = require("./search/cover-cache.cjs");
+const { isReliableCommunityTitleMatch } = require("./search/community-title-match.cjs");
+const { isLandscapeCoverDimensions } = require("./search/cover-eligibility.cjs");
+const { classifyBulkMetadataCandidates } = require("./metadata/bulk-match-policy.cjs");
 
 if (process.env.GAL_LAUNCHER_PERF_USER_DATA) {
   app.setPath("userData", path.resolve(process.env.GAL_LAUNCHER_PERF_USER_DATA));
@@ -22,12 +55,69 @@ if (process.env.GAL_LAUNCHER_PERF_USER_DATA) {
 
 // Route external requests through Electron's network stack so the session
 // proxy configured below also applies to metadata and translation providers.
+let directSession;
+let environmentProxySession;
+function isTransportFailure(error) {
+  return /ERR_(?:PROXY_CONNECTION_FAILED|TUNNEL_CONNECTION_FAILED|NO_SUPPORTED_PROXIES|CONNECTION_(?:TIMED_OUT|REFUSED|RESET)|NAME_NOT_RESOLVED|INTERNET_DISCONNECTED|NETWORK_CHANGED)|operation was aborted/i.test(String(error?.message || ""));
+}
+function directRetryArguments(args) {
+  const [url, options] = args;
+  if (!options?.signal?.aborted) return args;
+  return [url, { ...options, signal: AbortSignal.timeout(10000) }];
+}
 const networkClient = createNetworkClient({
-  fetchImpl: (...args) => net.fetch(...args)
+  fetchImpl: async (...args) => {
+    try { return await net.fetch(...args); }
+    catch (error) {
+      if (!isTransportFailure(error)) throw error;
+      // A failed or timed-out proxy route must not make directly reachable
+      // sources unavailable. An already-aborted request needs a fresh signal.
+      if (directSession) {
+        try { return await directSession.fetch(...directRetryArguments(args)); } catch (directError) { error = directError; }
+      }
+      // Environment proxy variables are a fallback only: system/PAC rules stay
+      // authoritative, and a request switches session only after that route fails.
+      if (environmentProxySession) return environmentProxySession.fetch(...args);
+      throw error;
+    }
+  }
 });
-const fetch = (...args) => networkClient.fetch(...args);
+const directNetworkClient = createNetworkClient({ fetchImpl: (...args) => directSession.fetch(...args) });
+const galgameWikiClient = createGalgameWikiClient({
+  requestJson: (...args) => directNetworkClient.requestJson(...args),
+  userAgent: `Gal Launcher/${app.getVersion()} (+https://github.com/KamiNeko-pre/gal-launcher)`
+});
+const coverSearchAttempts = new AsyncLocalStorage();
+const fetch = async (...args) => {
+  try {
+    const response = await networkClient.fetch(...args);
+    coverSearchAttempts.getStore()?.push({ ok: response.ok, httpStatus: response.status });
+    return response;
+  } catch (error) {
+    coverSearchAttempts.getStore()?.push({ ok: false, error });
+    throw error;
+  }
+};
 const libraryRepository = createLibraryRepository({ getUserDataPath: () => app.getPath("userData") });
-const { readLibrary, writeLibrary, backupPayload } = libraryRepository;
+const { readLibrary, writeLibrary, readDocument, writeDocument, backupPayload } = libraryRepository;
+let enhancementToolManager;
+function getEnhancementToolManager() {
+  if (!enhancementToolManager) {
+    enhancementToolManager = createToolManager({
+      rootPath: path.join(app.getPath("userData"), "enhancement-tools"),
+      fetchImpl: (...args) => fetch(...args),
+      prepareLocaleRuntimeScriptPath: app.isPackaged
+        ? path.join(process.resourcesPath, "prepare-locale-runtime.ps1")
+        : path.join(__dirname, "integrations", "prepare-locale-runtime.ps1")
+    });
+  }
+  return enhancementToolManager;
+}
+function getMagpieUserConfigPath() {
+  const localAppData = process.env.LOCALAPPDATA
+    || (process.env.USERPROFILE ? path.join(process.env.USERPROFILE, "AppData", "Local") : "");
+  return localAppData ? path.join(localAppData, "Magpie", "config", "v4", "config.json") : "";
+}
 const sessionJournal = createSessionJournal({ getUserDataPath: () => app.getPath("userData") });
 const { read: readJournal, write: writeJournal, add: journalAdd, remove: journalRemove, snapshot: journalSnapshot } = sessionJournal;
 
@@ -45,40 +135,34 @@ function markPerf(name) {
   const isDev = Boolean(process.env.VITE_DEV_SERVER_URL);
   let mainWindow;
   const activePlaySessions = new Map();
+  const pendingGameLaunches = new Set();
+  const activeLaunchScans = new Map();
 
-  const domainQueues = new Map();
-  function limitDomain(url, concurrency = 3) {
-    const origin = new URL(url).origin;
-    if (!domainQueues.has(origin)) {
-      domainQueues.set(origin, { running: 0, queue: [] });
-    }
-    const queue = domainQueues.get(origin);
-    return new Promise((resolve) => {
-      const run = () => {
-        queue.running++;
-        resolve();
-      };
-      if (queue.running < concurrency) {
-        run();
-      } else {
-        queue.queue.push(run);
-      }
-    }).finally(() => {
-      queue.running--;
-      const next = queue.queue.shift();
-      if (next) next();
-    });
+  const coverDomainLimiter = createDomainLimiter();
+  function fetchCover(url, options = {}) {
+    return coverDomainLimiter.run(url, 3, () => fetch(url, options));
+  }
+  function fetchCoverWithRetry(url, options = {}, retries = 2) {
+    return coverDomainLimiter.run(url, 3, () => fetchWithRetry(url, options, retries));
   }
 
 async function configureProxy(proxyPort) {
-  if (!proxyPort) return;
   try {
-    await session.defaultSession.setProxy({
-      proxyRules: `http://127.0.0.1:${proxyPort}`,
+    const options = {
+      env: process.env,
+      environmentProxyPolicy: "fallback",
       proxyBypassRules: "lzacg.cc,*.lzacg.cc,ossimg.nyaya.top,*.ossimg.nyaya.top,<local>"
-    });
+    };
+    if (proxyPort !== undefined) options.proxyPort = proxyPort;
+    return await applyProxyConfiguration(session.defaultSession, options);
   } catch (err) {
-    console.warn("[proxy] 代理配置失败，使用直连:", err.message);
+    console.warn("[proxy] 代理配置失败，尝试恢复系统代理:", err.message);
+    try {
+      return await applyProxyConfiguration(session.defaultSession, { proxyPort: null });
+    } catch (resetError) {
+      console.warn("[proxy] 无法恢复系统代理:", resetError.message);
+      return null;
+    }
   }
 }
 
@@ -101,6 +185,11 @@ function createWindow() {
     minHeight: 680,
     backgroundColor: "#121316",
     title: "Gal Launcher",
+    icon: getAppIconPath({
+      isPackaged: app.isPackaged,
+      resourcesPath: process.resourcesPath,
+      projectRoot: path.join(__dirname, "..")
+    }),
     titleBarStyle: "hiddenInset",
     autoHideMenuBar: true,
     webPreferences: {
@@ -110,6 +199,8 @@ function createWindow() {
     }
   });
   markPerf("browser-window-created");
+  mainWindow.on("enter-full-screen", () => mainWindow?.webContents.send("window:fullscreenChanged", true));
+  mainWindow.on("leave-full-screen", () => mainWindow?.webContents.send("window:fullscreenChanged", false));
   mainWindow.webContents.on("dom-ready", () => markPerf("dom-ready"));
   mainWindow.webContents.on("did-finish-load", () => markPerf("did-finish-load"));
 
@@ -156,13 +247,15 @@ async function normalizeLibraryForRuntime(games) {
   const MAX_RECOVERY_SECONDS = 24 * 3600; // 24-hour cap for crash recovery
 
   for (const game of games) {
+    const stored = stripTransientInstallationState(game);
     const next = {
-      ...game,
+      ...stored.game,
       playCount: Number.isFinite(game.playCount) ? game.playCount : 0,
       totalPlaySeconds: Number.isFinite(game.totalPlaySeconds) ? game.totalPlaySeconds : 0,
       currentSessionId: game.currentSessionId ?? null,
       currentSessionStartedAt: game.currentSessionStartedAt ?? null
     };
+    if (stored.changed) changed = true;
 
     if (next.currentSessionStartedAt) {
       const startedMs = new Date(next.currentSessionStartedAt).getTime();
@@ -181,10 +274,15 @@ async function normalizeLibraryForRuntime(games) {
         // Only recover if a matching journal entry proves this was a real session
         const journalEntry = journal[next.currentSessionId];
         if (journalEntry) {
-          const pids = await runningProcessIdsUnder(monitorRootForGame(next));
-          if (pids.length > 0) {
+          const baselinePids = Array.isArray(journalEntry.baselinePids) ? journalEntry.baselinePids : [];
+          const pids = await findRunningSessionPids({
+            trackedPids: [],
+            baselinePids,
+            monitorRoot: monitorRootForGame(next)
+          });
+          if (pids === null || pids.length > 0) {
             // Game still running — resume monitoring
-            startPlaySession(next, next.currentSessionId, next.currentSessionStartedAt, null, startedMs);
+            startPlaySession(next, next.currentSessionId, next.currentSessionStartedAt, pids, startedMs, baselinePids);
           } else {
             // Crashed: prefer exact snapshot from before-quit, fall back to wall clock with 24h cap
             let recoveryDuration;
@@ -553,7 +651,7 @@ function stripMarkup(text) {
 function normalizeSearchText(value) {
   return cleanText(value)
     .replace(/\.(exe|bat|cmd|lnk)$/i, "")
-    .replace(/[_-]?(chs|cn|zh|utf8|patch|translation|crack|uncensor|ai|gemini|claude|deepseek|v\d+(?:\.\d+)*)/gi, " ")
+    .replace(/(^|[^\p{L}\p{N}])(?:chs|cn|zh|utf8|patch|translation|crack|uncensor|ai|gemini|claude|deepseek|v\d+(?:\.\d+)*)(?=$|[^\p{L}\p{N}])/giu, "$1 ")
     .replace(/\b(?:version|ver)\s*\d+(?:\.\d+)*\b/gi, " ")
     .replace(/[【】\[\]（）()]/g, " ")
     .replace(/[^\p{L}\p{N}]+/gu, " ")
@@ -592,26 +690,19 @@ function isGenericSearchText(value) {
 }
 
 function collectTitleVariants(game) {
-  const terms = [];
-  const add = (v) => { if (v && typeof v === "string" && cleanText(v)) terms.push(cleanText(v)); };
+  const titles = [game.title, game.originalTitle, game.vndbTitle, game.vndbOriginalTitle]
+    .filter((value) => typeof value === "string" && cleanText(value))
+    .map(cleanText);
+  if (titles.length) return Array.from(new Set(titles));
 
-  add(game.title);
-  add(game.originalTitle);
-  add(game.developer);
-  add(path.basename(game.installPath || ""));
-  add(path.basename(path.dirname(game.installPath || "")));
-  add(path.basename(game.executablePath || "", path.extname(game.executablePath || "")));
-
-  // VNDB-enriched metadata from "重搜资料"
-  add(game.vndbTitle);
-  add(game.vndbOriginalTitle);
-
-  // Tags as extra context
-  for (const tag of normalizeTags(game.tags || []).slice(0, 3)) {
-    add(tag);
-  }
-
-  return Array.from(new Set(terms.filter(Boolean)));
+  // A file system name is only a fallback before a game has an identifiable
+  // title. Directory names, developer names and tags are contextual metadata,
+  // not alternative titles; searching them can produce unrelated games.
+  const fallback = [
+    path.basename(game.installPath || ""),
+    path.basename(game.executablePath || "", path.extname(game.executablePath || ""))
+  ].filter((value) => cleanText(value)).map(cleanText);
+  return Array.from(new Set(fallback));
 }
 
 function expandSearchAlias(query) {
@@ -659,6 +750,16 @@ function rawTitleQueriesFor(game) {
   return Array.from(new Set([...primary, ...secondary].filter((item) => !isGenericSearchText(item)))).slice(0, 16);
 }
 
+function steamFallbackExecutableQuery(game) {
+  const executableName = path.basename(game.executablePath || "", path.extname(game.executablePath || ""));
+  const query = cleanText(executableName);
+  return isGenericSearchText(query) ? "" : query;
+}
+
+function isSteamGameDetails(details) {
+  return Boolean(details) && details.type === "game";
+}
+
 function similarity(a, b) {
   const left = normalizeSearchText(a);
   const right = normalizeSearchText(b);
@@ -668,9 +769,10 @@ function similarity(a, b) {
   const rightNumbers = right.match(/\d+/g) || [];
   const numberMismatch = leftNumbers.length > 0 && rightNumbers.length > 0 && leftNumbers.join(",") !== rightNumbers.join(",");
   const numberMissing = (leftNumbers.length > 0) !== (rightNumbers.length > 0);
-  if (left.includes(right) || right.includes(left)) return numberMismatch || numberMissing ? 0.58 : 0.86;
-  const leftParts = new Set(left.split(/\s+/).filter((part) => part.length >= 2));
-  const rightParts = new Set(right.split(/\s+/).filter((part) => part.length >= 2));
+  if (numberMismatch || numberMissing) return 0;
+  if (left.includes(right) || right.includes(left)) return 0.86;
+  const leftParts = new Set(left.split(/\s+/).filter((part) => part.length >= 2 || /^\d+$/.test(part)));
+  const rightParts = new Set(right.split(/\s+/).filter((part) => part.length >= 2 || /^\d+$/.test(part)));
   if (leftParts.size === 0 || rightParts.size === 0) return 0;
   let hit = 0;
   for (const part of leftParts) {
@@ -742,27 +844,26 @@ async function translateToChinese(text) {
   if (!value) return { text: value, status: "empty" };
   const result = await translateLongText(value, {
     chunkSize: 450,
+    requireStructuredResults: true,
     translateChunk: async (chunk) => {
       const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=zh-CN&dt=t&q=${encodeURIComponent(chunk)}`;
-      const response = await fetch(url, {
+      const response = await networkClient.requestJson(url, {
         headers: { "User-Agent": `Gal Launcher/${app.getVersion()}` },
-        signal: AbortSignal.timeout(4000)
+        timeoutMs: 4000
       });
-      if (!response.ok) throw new Error(`translate ${response.status}`);
-      const data = await response.json();
-      return (data[0] || []).map((part) => part[0]).join("");
+      if (response.status !== "success") return { status: "error" };
+      return successfulTranslation((response.data?.[0] || []).map((part) => part[0]).join(""));
     },
     fallbackChunk: async (chunk) => {
       const fallbackUrl = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(chunk)}&langpair=en|zh-CN`;
-      const fallback = await fetch(fallbackUrl, {
+      const fallback = await directNetworkClient.requestJson(fallbackUrl, {
         headers: { "User-Agent": `Gal Launcher/${app.getVersion()}` },
-        signal: AbortSignal.timeout(6000)
+        timeoutMs: 6000
       });
-      if (!fallback.ok) throw new Error(`fallback translate ${fallback.status}`);
-      const data = await fallback.json();
-      const translatedText = String(data.responseData?.translatedText || "");
-      if (/QUERY LENGTH LIMIT EXCEEDED|MAX ALLOWED QUERY/i.test(translatedText)) throw new Error("translation limit exceeded");
-      return translatedText;
+      if (fallback.status !== "success" || Number(fallback.data?.responseStatus) !== 200) return { status: "error" };
+      const translatedText = String(fallback.data?.responseData?.translatedText || "");
+      if (/QUERY LENGTH LIMIT EXCEEDED|MAX ALLOWED QUERY/i.test(translatedText)) return { status: "error" };
+      return successfulTranslation(translatedText);
     }
   });
   return { ...result, original: value };
@@ -792,6 +893,14 @@ function pickPreferredTitle(vn) {
 }
 
 async function searchVndb(query) {
+  const operation = coverSearchAttempts.getStore();
+  if (!operation) return requestVndbSearch(query);
+  operation.vndbRequests ||= new Map();
+  if (!operation.vndbRequests.has(query)) operation.vndbRequests.set(query, requestVndbSearch(query));
+  return operation.vndbRequests.get(query);
+}
+
+async function requestVndbSearch(query) {
   const response = await fetchWithRetry("https://api.vndb.org/kana/vn", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -847,20 +956,73 @@ async function enrichOnlineMetadata(game) {
   return hydrateMetadataCandidate(game, best);
 }
 
+async function enrichBulkMetadata(game) {
+  const candidates = await searchMetadataCandidates(game, "");
+  const decision = classifyBulkMetadataCandidates(candidates);
+  if (decision.kind !== "apply") return decision;
+  return { kind: "apply", metadata: await hydrateMetadataCandidate(game, decision.candidate) };
+}
+
 async function searchMetadataCandidates(game, keyword = "") {
   const queries = keyword ? [keyword, ...titleQueriesFor({ ...game, title: keyword, originalTitle: keyword })] : titleQueriesFor(game);
   const matches = [];
-
-  for (const query of Array.from(new Set(queries)).slice(0, 10)) {
-    try {
-      const results = await searchVndb(query);
-      for (const vn of results) {
-        const confidence = scoreVnCandidate(query, vn);
-        if (confidence >= 0.5) matches.push({ vn, confidence, query });
+  const galgameWikiMatches = [];
+  let completedQueries = 0;
+  const uniqueQueries = Array.from(new Set(queries)).slice(0, 10);
+  await Promise.all(
+    uniqueQueries.map((query) => coverDomainLimiter.run("https://api.vndb.org", 3, async () => {
+      try {
+        const results = await searchVndb(query);
+        completedQueries++;
+        for (const vn of results) {
+          const confidence = scoreVnCandidate(query, vn);
+          if (confidence >= 0.5) matches.push({ vn, confidence, query });
+        }
+      } catch {
+        // Independent fallback sources continue below.
       }
-    } catch {
-      continue;
+    }))
+  );
+
+  // The community source is intentionally a fallback: it is useful on direct
+  // Chinese networks, but should not add 1–3 detail requests to every VNDB hit.
+  if (!matches.length && uniqueQueries[0]) {
+    await coverDomainLimiter.run("https://www.galgamewiki.com", 1, async () => {
+      try {
+        const results = await galgameWikiClient.search(uniqueQueries[0]);
+        completedQueries++;
+        for (const item of results) {
+          const candidate = toGalgameWikiCandidate(uniqueQueries[0], item, similarity);
+          if (candidate.confidence >= 0.5) galgameWikiMatches.push(candidate);
+        }
+      } catch {
+        // VNDB and Bangumi remain usable if the community source is unavailable.
+      }
+    });
+  }
+
+  if (!matches.length && !galgameWikiMatches.length) {
+    const fallback = await Promise.allSettled(uniqueQueries.slice(0, 4).map(async (query) => {
+      const response = await directNetworkClient.requestJson("https://api.bgm.tv/v0/search/subjects", {
+        method: "POST", headers: { "Content-Type": "application/json", "User-Agent": `Gal Launcher/${app.getVersion()}` },
+        body: JSON.stringify({ keyword: query, filter: { type: [4] }, sort: "match" }), timeoutMs: 6000
+      });
+      if (response.status !== "success" || !Array.isArray(response.data?.data)) throw new Error("Bangumi unavailable");
+      completedQueries++;
+      return response.data.data.map(item => ({
+        source: "bangumi", sourceId: String(item.id),
+        confidence: Math.max(similarity(query, item.name || ""), similarity(query, item.name_cn || "")),
+        matchedQuery: query, title: item.name_cn || item.name || "", originalTitle: item.name || "",
+        developer: "", releaseDate: item.date || "", descriptionPreview: stripMarkup(item.summary || "").slice(0, 220),
+        coverUrl: item.images?.large || item.images?.common || ""
+      })).filter(item => item.confidence >= 0.5);
+    }));
+    const byId = new Map();
+    for (const result of fallback) if (result.status === "fulfilled") for (const item of result.value) {
+      if (!byId.has(item.sourceId) || byId.get(item.sourceId).confidence < item.confidence) byId.set(item.sourceId, item);
     }
+    if (byId.size) return [...byId.values()].sort((a, b) => b.confidence - a.confidence).slice(0, 8);
+    if (!completedQueries) throw new Error("资料搜索失败：VNDB、GalgameWiki 和 Bangumi 均不可用，请检查网络后重试");
   }
 
   const bestById = new Map();
@@ -869,9 +1031,8 @@ async function searchMetadataCandidates(game, keyword = "") {
     if (!existing || match.confidence > existing.confidence) bestById.set(match.vn.id, match);
   }
 
-  return Array.from(bestById.values())
+  const vndbCandidates = Array.from(bestById.values())
     .sort((a, b) => b.confidence - a.confidence)
-    .slice(0, 8)
     .map(({ vn, confidence, query }) => ({
       source: "vndb",
       sourceId: vn.id,
@@ -884,9 +1045,37 @@ async function searchMetadataCandidates(game, keyword = "") {
       descriptionPreview: stripMarkup(vn.description || "").slice(0, 220),
       coverUrl: vn.image?.url || ""
     }));
+
+  return [...vndbCandidates, ...galgameWikiMatches]
+    .sort((a, b) => b.confidence - a.confidence)
+    .slice(0, 8);
 }
 
 async function hydrateMetadataCandidate(game, candidate, { forceTranslation = false } = {}) {
+  if (candidate.source === "galgamewiki") {
+    const item = await galgameWikiClient.getById(candidate.sourceId);
+    return toGalgameWikiPatch(item, candidate.confidence);
+  }
+  if (candidate.source === "bangumi") {
+    if (!/^\d+$/.test(String(candidate.sourceId))) throw new Error("无效的 Bangumi 条目");
+    const result = await directNetworkClient.requestJson(`https://api.bgm.tv/v0/subjects/${candidate.sourceId}`, {
+      headers: { "User-Agent": `Gal Launcher/${app.getVersion()}` }, timeoutMs: 6000
+    });
+    if (result.status !== "success" || !result.data?.id) throw new Error("备用资料加载失败，请稍后重试");
+    const item = result.data;
+    const original = stripMarkup(item.summary || "");
+    const translated = await translateToChinese(original);
+    const chinese = ["success", "already_zh"].includes(translated.status) ? translated.text : "";
+    return {
+      source: "bangumi", sourceId: String(item.id), confidence: candidate.confidence,
+      metadataSource: "bangumi", metadataSourceId: String(item.id), metadataConfidence: candidate.confidence,
+      title: item.name_cn || item.name, originalTitle: item.name, releaseDate: item.date || "",
+      description: translated.text, descriptionOriginal: original, descriptionZh: chinese,
+      descriptionSourceHash: crypto.createHash("sha256").update(original, "utf8").digest("hex"),
+      translationStatus: translated.status, translationUpdatedAt: new Date().toISOString(),
+      coverPath: item.images?.large || item.images?.common || ""
+    };
+  }
   const vn = (await getVndbById(candidate.sourceId)) || (await searchVndb(candidate.title || "")).find((item) => item.id === candidate.sourceId);
   if (!vn) return { confidence: 0, source: "none" };
   const coverPath = vn.image?.url || "";
@@ -929,14 +1118,7 @@ function coverCandidateScore(filePath, sourceWeight = 0) {
   if (!dimensions.width || !dimensions.height) return null;
   const { width, height, ratio } = dimensions;
 
-  let tier = null;
-  if (width >= 1080 && height >= 600 && ratio >= 1.18 && ratio <= 2.80) {
-    tier = "landscape";
-  } else if (width >= 400 && height >= 560 && ratio >= 0.50 && ratio < 1.18) {
-    tier = "portrait";
-  } else {
-    return null;
-  }
+  if (!isLandscapeCoverDimensions({ width, height, ratio })) return null;
 
   const megapixels = (width * height) / 1_000_000;
   const name = path.basename(filePath).toLowerCase();
@@ -946,11 +1128,8 @@ function coverCandidateScore(filePath, sourceWeight = 0) {
   if (width >= 1920) score += 24;
   if (height >= 720) score += 18;
   if (/mainvisual|keyvisual|visual|kv|hero|background|wallpaper|ogp|top|main|official/i.test(name)) score += 28;
-  // Reduced penalty for portrait (VNDB covers etc.)
-  if (/cover|jacket|package|poster/i.test(name) && tier === "portrait") score -= 12;
-  else if (/cover|jacket|package|poster|icon|logo|button|thumb|thumbnail|caution|warning|readme|manual|sprite/i.test(name)) score -= 60;
+  if (/cover|jacket|package|poster|icon|logo|button|thumb|thumbnail|caution|warning|readme|manual|sprite/i.test(name)) score -= 60;
   if (/cg|ss|sample|event/i.test(name)) score -= 24;
-  if (tier === "portrait") score -= 40;
 
   return { width, height, score };
 }
@@ -1039,18 +1218,12 @@ function coverCachePath(game) {
 
 function readCoverCandidateCache(game) {
   const payload = readJsonFile(coverCachePath(game), null);
-  if (!payload || !Array.isArray(payload.candidates)) return [];
-  if (payload.version !== 4) return [];
-  const ageMs = Date.now() - new Date(payload.updatedAt || 0).getTime();
-  if (!Number.isFinite(ageMs) || ageMs > 10 * 60 * 1000) return [];
-  return payload.candidates
-    .filter((candidate) => candidate?.path && fs.existsSync(candidate.path))
-    .slice(0, 24);
+  return cachedCoverCandidates(payload, { existsSync: fs.existsSync });
 }
 
 function writeCoverCandidateCache(game, candidates) {
   writeJsonFile(coverCachePath(game), {
-    version: 4,
+    version: COVER_CANDIDATE_CACHE_VERSION,
     updatedAt: new Date().toISOString(),
     candidates
   });
@@ -1060,7 +1233,7 @@ async function downloadCandidate(game, url, source, sourceWeight, reason) {
   if (!url) return null;
   const filePath = candidateFilePath(game, url, source.toLowerCase().replace(/[^a-z0-9]+/g, ""));
   if (!fs.existsSync(filePath) || fs.statSync(filePath).size === 0) {
-    const response = await fetch(url, {
+    const response = await fetchCover(url, {
       headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36" },
       signal: AbortSignal.timeout(30000)
     });
@@ -1159,7 +1332,9 @@ function parseBangumiSearchItems(html, query) {
   const items = [];
   const blocks = html.match(/<li id=["']item_\d+["'][\s\S]*?<\/li>/gi) || [];
   for (const block of blocks) {
-    const id = Number(block.match(/id=["']item_(\d+)["']/i)?.[1] || 0);
+    // `item_123` is a search-result container id, not the Bangumi subject id.
+    // The authoritative id is embedded in the result link itself.
+    const id = Number(block.match(/<a href=["']\/subject\/(\d+)["']/i)?.[1] || 0);
     if (!id) continue;
     const coverRaw = block.match(/<img[^>]+src=["']([^"']+)["'][^>]*class=["']cover["']/i)?.[1] || "";
     // Strip resize path segment /r/400/ to get original resolution
@@ -1227,14 +1402,21 @@ async function lookupBangumiRating(game) {
         signal: AbortSignal.timeout(5000)
       });
       if (!response.ok) {
+        // A stale subject id is recoverable: fall through to title search so
+        // the user gets a fresh match instead of a permanent broken link.
+        if (response.status === 404) {
+          console.log(`[bangumi] stale subject id ${Number(game.bgmId)}, falling back to title search`);
+        } else {
         const error = new Error(`Bangumi subject returned ${response.status}`);
         error.code = response.status === 429 ? "rate_limited" : "network_error";
         throw error;
+        }
+      } else {
+        const subject = await response.json();
+        const score = Number(subject.rating?.score || 0);
+        const scoreCount = Number(subject.rating?.total || 0);
+        if (score > 0 && scoreCount > 0) return ratingPatchForMatch({ id: Number(game.bgmId), score, scoreCount, rank: Number(subject.rating?.rank || 0) });
       }
-      const subject = await response.json();
-      const score = Number(subject.rating?.score || 0);
-      const scoreCount = Number(subject.rating?.total || 0);
-      if (score > 0 && scoreCount > 0) return ratingPatchForMatch({ id: Number(game.bgmId), score, scoreCount, rank: Number(subject.rating?.rank || 0) });
     } catch (error) {
       return ratingPatchForFailure(error.code === "rate_limited" ? "rate_limited" : "network_error");
     }
@@ -1347,7 +1529,7 @@ function lzacgArticlesFromSearch(html, query) {
     const title = stripMarkup(match[2].replace(/<[^>]+>/g, " ").replace(/\s+/g, " "));
     if (!title || title.length < 4 || /新人必读|广告|合作|友情链接|TG|群/i.test(title)) continue;
     const score = Math.max(similarity(query, title), similarity(normalizeSearchText(query), normalizeSearchText(title)));
-    if (score < 0.32) continue;
+    if (!isReliableCommunityTitleMatch(score)) continue;
     seen.add(url);
     articles.push({ url, title, score });
   }
@@ -1358,7 +1540,7 @@ function lzacgArticlesFromSearch(html, query) {
     const title = stripMarkup(match[2]);
     if (!title || /新人必读|广告|合作|友情链接|TG|群/i.test(title)) continue;
     const score = Math.max(similarity(query, title), similarity(normalizeSearchText(query), normalizeSearchText(title)));
-    if (score < 0.32) continue;
+    if (!isReliableCommunityTitleMatch(score)) continue;
     seen.add(url);
     articles.push({ url, title, score });
   }
@@ -1376,7 +1558,7 @@ function lzacgArticlesFromCategory(html, query) {
     const title = stripMarkup(card.replace(/<[^>]+>/g, " ").replace(/\s+/g, " "));
     if (!title || title.length < 4 || /新人必读|广告|合作|友情链接|TG|群/i.test(title)) continue;
     const score = Math.max(similarity(query, title), similarity(normalizeSearchText(query), normalizeSearchText(title)));
-    if (score < 0.30) continue;
+    if (!isReliableCommunityTitleMatch(score)) continue;
     seen.add(link);
     articles.push({ url: link, title, score });
   }
@@ -1386,8 +1568,7 @@ function lzacgArticlesFromCategory(html, query) {
 async function searchLzacgArticles(query, categoryPageLimit = 1) {
   const all = [];
   try {
-    await limitDomain("https://lzacg.cc/", 3);
-    const response = await fetchWithRetry(`https://lzacg.cc/?s=${encodeURIComponent(query)}`, {
+    const response = await fetchCoverWithRetry(`https://lzacg.cc/?s=${encodeURIComponent(query)}`, {
       headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36" },
       signal: AbortSignal.timeout(9000)
     });
@@ -1396,14 +1577,20 @@ async function searchLzacgArticles(query, categoryPageLimit = 1) {
     console.warn("[cover] Lzacg search failed:", error.message?.slice(0, 80));
   }
 
+  // The site's own query is title-specific. Category pages are a broad
+  // fallback only: scanning them after an exact hit creates a large backlog of
+  // image downloads without improving the title match.
+  if (all.length > 0) {
+    return all.sort((a, b) => b.score - a.score).slice(0, 4);
+  }
+
   const categoryPages = [
     "https://lzacg.cc/category/galgame",
     ...Array.from({ length: Math.max(0, categoryPageLimit - 1) }, (_, index) => `https://lzacg.cc/category/galgame/page/${index + 2}`)
   ];
   const settled = await Promise.allSettled(
     categoryPages.map(async (url) => {
-      await limitDomain(url, 3);
-      const response = await fetchWithRetry(url, {
+      const response = await fetchCoverWithRetry(url, {
         headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36" },
         signal: AbortSignal.timeout(9000)
       });
@@ -1425,15 +1612,14 @@ async function searchLzacgArticles(query, categoryPageLimit = 1) {
 
 async function lzacgCandidatesForArticle(game, article) {
   try {
-    await limitDomain(article.url, 3);
-    const response = await fetch(article.url, {
+    const response = await fetchCover(article.url, {
       headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36" },
       signal: AbortSignal.timeout(9000)
     });
     if (!response.ok) return [];
     const urls = lzacgImageUrlsFromArticle(await response.text(), article.url);
     const settled = await Promise.allSettled(
-      urls.slice(0, 5).map((url, index) =>
+      urls.slice(0, 8).map((url, index) =>
         downloadCandidate(game, url, "量子ACG", 132 + article.score * 26 - index * 6, `${article.title} 第 ${index + 1} 张图`)
       )
     );
@@ -1459,7 +1645,7 @@ async function findLzacgCandidates(game, options = {}) {
   const queries = Array.from(
     new Set([...baseQueries, ...onlineQueries].map(cleanText).filter((item) => !isGenericSearchText(item)).flatMap(expandSearchAlias))
   ).slice(0, options.fast ? 8 : 16);
-  const searchSettled = await Promise.allSettled(queries.map((query) => searchLzacgArticles(query, options.fast ? 4 : 10)));
+  const searchSettled = await Promise.allSettled(queries.map((query) => searchLzacgArticles(query, options.fast ? 1 : 10)));
   const articles = [];
   const seen = new Set();
   for (const item of searchSettled) {
@@ -1484,16 +1670,17 @@ function dlsiteImageUrlsFromProduct(html, pageUrl) {
   const ogMatch = html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["'][^>]*>/i)
     || html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["'][^>]*>/i);
   if (ogMatch) urls.push(ogMatch[1]);
-  // product images — look for img tags with modpub/img.dlsite.jp in src
-  for (const match of html.matchAll(/<img[^>]+src=["']([^"']*img\.dlsite\.jp[^"']+)["'][^>]*>/gi)) {
-    urls.push(match[1]);
-  }
-  for (const match of html.matchAll(/<img[^>]+data-src=["']([^"']*img\.dlsite\.jp[^"']+)["'][^>]*>/gi)) {
+  // Product sample slides are currently rendered as `div data-src` rather
+  // than img tags, so read either attribute from any element.
+  for (const match of html.matchAll(/(?:src|data-src)=["']((?:https?:)?\/\/img\.dlsite\.jp[^"']+)["']/gi)) {
     urls.push(match[1]);
   }
   // normalize: strip resize suffixes to get original resolution
   return Array.from(new Set(urls)).map((raw) => {
     let u = raw.replace(/&amp;/g, "&");
+    // `resize/images2` only serves named thumbnails. Its full-sized sibling
+    // lives under `modpub/images2` with the same file stem.
+    u = u.replace(/(https?:)?\/\/img\.dlsite\.jp\/resize\/images2\//i, "https://img.dlsite.jp/modpub/images2/");
     // Strip dimension suffixes: _240x240, _800x600 etc. before extension
     u = u.replace(/_(\d{2,4})x(\d{2,4})(?=\.(?:png|jpe?g|webp))/gi, "");
     // Strip common thumbnail type markers
@@ -1509,19 +1696,22 @@ function dlsiteImageUrlsFromProduct(html, pageUrl) {
 function searchDlsiteArticlesFromHtml(html, query) {
   const articles = [];
   const seen = new Set();
-  // Match product links: /maniax/work/=/product_id/XXX.html or /work/=/product_id/XXX.html
-  // Links have title attribute with the product name
-  const linkPattern = /<a[^>]+href=["'](\/[^"']*\/work\/=\/product_id\/[^"'\s]+?)(?:\.html)?["'][^>]*>/gi;
-  for (const match of html.matchAll(linkPattern)) {
-    const rawLink = match[1];
+  // Search cards currently use either ordinary anchors or custom thumbnail
+  // components with a `link` attribute and an absolute /pro/work URL.
+  const tagPattern = /<(?:a|thumb-with-ng-filter-block)\b[^>]*>/gi;
+  for (const match of html.matchAll(tagPattern)) {
+    const tag = match[0];
+    const linkMatch = tag.match(/(?:href|link)=["']((?:https?:\/\/[^"']+)?\/[^"']*\/work\/=\/product_id\/[^"'\s]+?)(?:\.html)?["']/i);
+    if (!linkMatch) continue;
+    const rawLink = linkMatch[1];
     if (seen.has(rawLink) || /reviewlist/i.test(rawLink)) continue;
-    seen.add(rawLink);
-    // Prefer title attribute, fallback to link text
-    const titleAttr = match[0].match(/title=["']([^"']+)["']/i);
-    const title = titleAttr ? titleAttr[1].trim() : stripMarkup(match[0].replace(/<[^>]+>/g, " ")).trim();
+    // New thumbnail components label the work with `alt`; old anchors use title.
+    const titleAttr = tag.match(/(?:title|alt)=["']([^"']+)["']/i);
+    const title = titleAttr ? titleAttr[1].trim() : "";
     if (!title || title.length < 2) continue;
     const score = Math.max(similarity(query, title), similarity(normalizeSearchText(query), normalizeSearchText(title)));
-    if (score < 0.12) continue;
+    if (!isReliableCommunityTitleMatch(score)) continue;
+    seen.add(rawLink);
     articles.push({ url: new URL(rawLink, "https://www.dlsite.com").toString(), title, score });
   }
   return articles.sort((a, b) => b.score - a.score).slice(0, 4);
@@ -1534,8 +1724,7 @@ async function searchDlsiteArticles(query) {
   ];
   const settled = await Promise.allSettled(urls.map(async (url) => {
     try {
-      await limitDomain("https://www.dlsite.com", 3);
-      const response = await fetch(url, {
+      const response = await fetchCover(url, {
         headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36" },
         signal: AbortSignal.timeout(10000)
       });
@@ -1561,8 +1750,7 @@ async function searchDlsiteArticles(query) {
 
 async function dlsiteCandidatesForProduct(game, article) {
   try {
-    await limitDomain("https://www.dlsite.com", 3);
-    const response = await fetch(article.url, {
+    const response = await fetchCover(article.url, {
       headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36" },
       signal: AbortSignal.timeout(10000)
     });
@@ -1604,16 +1792,14 @@ async function findDlsiteCandidates(game) {
 function search2DFanSubjectsFromHtml(html, query) {
   const subjects = [];
   const seen = new Set();
-  // Match subject item cards: /subjects/<id>
-  const itemPattern = /<a[^>]+href=["'](\/subjects\/\d+[^"']*)["'][^>]*>/gi;
+  // Match subject links with their own visible label. A card can contain an
+  // earlier image-only link, so title extraction must stay on this anchor.
+  const itemPattern = /<a[^>]+href=["'](\/subjects\/\d+[^"']*)["'][^>]*>([\s\S]*?)<\/a>/gi;
   for (const match of html.matchAll(itemPattern)) {
     const link = match[1];
-    if (seen.has(link)) continue;
+    const title = stripMarkup(match[2].replace(/<[^>]*>/g, " ")).trim();
+    if (!title || seen.has(link)) continue;
     seen.add(link);
-    const ctx = html.slice(Math.max(0, match.index - 600), match.index + 1200);
-    const titleMatch = ctx.match(/<a[^>]+href=["'][^"']*\/subjects\/[^"']+["'][^>]*>([\s\S]*?)<\/a>/i);
-    const title = titleMatch ? stripMarkup(titleMatch[1]).trim() : "";
-    if (!title) continue;
     const score = Math.max(similarity(query, title), similarity(normalizeSearchText(query), normalizeSearchText(title)));
     if (score < 0.15) continue;
     subjects.push({ url: new URL(link, "https://2dfan.com").toString(), title, score });
@@ -1652,6 +1838,7 @@ function twoDFanImageUrlsFromSubject(html, pageUrl) {
 
 function search2DFanSubjectsFromJson(data, query) {
   // Rails JSON search responses can be: array, {subjects: [...]}, {data: [...]}, {results: [...]}
+  if (typeof data?.subjects === "string") return search2DFanSubjectsFromHtml(data.subjects, query);
   const items = Array.isArray(data) ? data
     : data.subjects || data.data || data.results || data.items || [];
   if (!Array.isArray(items)) return [];
@@ -1671,14 +1858,13 @@ async function search2DFanSubjects(query) {
   // Try multiple URL formats: .json variant first, then HTML.
   const encoded = encodeURIComponent(query);
   const urls = [
-    { url: `https://2dfan.com/subjects/search.json?q=${encoded}`, type: "json" },
-    { url: `https://2dfan.com/subjects/search?q=${encoded}`, type: "html" }
+    { url: `https://2dfan.com/subjects/search.json?keyword=${encoded}`, type: "json" },
+    { url: `https://2dfan.com/subjects/search?keyword=${encoded}`, type: "html" }
   ];
 
   const settled = await Promise.allSettled(urls.map(async ({ url, type }) => {
     try {
-      await limitDomain("https://2dfan.com", 3);
-      const response = await fetch(url, {
+      const response = await fetchCover(url, {
         headers: {
           "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
           "Accept": type === "json" ? "application/json" : "text/html"
@@ -1714,8 +1900,7 @@ async function search2DFanSubjects(query) {
 
 async function twoDFanCandidatesForSubject(game, subject) {
   try {
-    await limitDomain("https://2dfan.com", 3);
-    const response = await fetch(subject.url, {
+    const response = await fetchCover(subject.url, {
       headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36" },
       signal: AbortSignal.timeout(10000)
     });
@@ -1760,7 +1945,7 @@ async function findVndbScreenshotCandidates(game) {
     if (item.status !== "fulfilled") continue;
     for (const vn of item.value.results.slice(0, 5)) {
       const confidence = scoreVnCandidate(item.value.query, vn);
-      if (confidence >= 0.58) matches.push({ vn, confidence, query: item.value.query });
+      if (confidence >= 0.58 && (game.metadataSource !== "vndb" || !game.metadataSourceId || vn.id === game.metadataSourceId)) matches.push({ vn, confidence, query: item.value.query });
     }
   }
 
@@ -1792,6 +1977,7 @@ async function findVndbScreenshotCandidates(game) {
       for (const vn of item.value.results.slice(0, 3)) {
         const confidence = scoreVnCandidate(item.value.query, vn);
         if (confidence < 0.60 || !vn.image?.url || seen.has(vn.image.url)) continue;
+        if (game.metadataSource === "vndb" && game.metadataSourceId && vn.id !== game.metadataSourceId) continue;
         seen.add(vn.image.url);
         downloads.push(downloadCandidate(game, vn.image.url, "VNDB封面", 62 + confidence * 12, `${vn.title || vn.id} / ${vn.id}`));
       }
@@ -1811,6 +1997,7 @@ async function findVndbScreenshotCandidates(game) {
         if (seenVn.has(vn.id)) continue;
         const confidence = scoreVnCandidate(item.value.query, vn);
         if (confidence < 0.72) continue;
+        if (game.metadataSource === "vndb" && game.metadataSourceId && vn.id !== game.metadataSourceId) continue;
         seenVn.add(vn.id);
         for (const link of vn.extlinks || []) {
           const url = String(link.url || "");
@@ -1860,17 +2047,20 @@ async function findVndbScreenshotCandidates(game) {
   }
 
   async function findSteamCandidates(game) {
-    const queries = rawTitleQueriesFor(game)
+    const queries = Array.from(new Set([
+      ...rawTitleQueriesFor(game),
+      steamFallbackExecutableQuery(game)
+    ]))
       .filter((q) => q.length >= 3)
       .slice(0, 8);
     const appMatches = [];
-    for (const query of queries) {
+    await Promise.all(queries.map(async (query) => {
       try {
-        const response = await fetchWithRetry(`https://store.steampowered.com/api/storesearch/?term=${encodeURIComponent(query)}&l=english&cc=us`, {
+        const response = await fetchCoverWithRetry(`https://store.steampowered.com/api/storesearch/?term=${encodeURIComponent(query)}&l=english&cc=us`, {
           headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36" },
           signal: AbortSignal.timeout(7000)
         });
-        if (!response.ok) continue;
+        if (!response.ok) return;
         const data = await response.json();
         for (const item of (data.items || []).slice(0, 8)) {
           const confidence = similarity(query, item.name || "");
@@ -1879,7 +2069,7 @@ async function findVndbScreenshotCandidates(game) {
       } catch (error) {
         console.warn("[cover] Steam search failed:", error.message?.slice(0, 80));
       }
-    }
+    }));
 
     if (!process.env.COVER_QUIET) {
       console.log(`[cover:${game.title.slice(0, 20)}] Steam: ${queries.length} queries, ${appMatches.length} app matches`);
@@ -1890,37 +2080,41 @@ async function findVndbScreenshotCandidates(game) {
       if (!bestByApp.has(match.appid)) bestByApp.set(match.appid, match);
     }
 
-    const downloads = [];
-    for (const match of Array.from(bestByApp.values()).slice(0, 4)) {
+    const downloadPlans = [];
+    await Promise.all(Array.from(bestByApp.values()).slice(0, 4).map(async (match) => {
       try {
-        const response = await fetch(`https://store.steampowered.com/api/appdetails?appids=${match.appid}&filters=basic,screenshots`, {
+        const response = await fetchCover(`https://store.steampowered.com/api/appdetails?appids=${match.appid}&filters=basic,screenshots`, {
           headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36" },
           signal: AbortSignal.timeout(7000)
         });
-        if (!response.ok) continue;
+        if (!response.ok) return;
         const details = (await response.json())?.[match.appid]?.data;
-        if (!details) continue;
+        if (!isSteamGameDetails(details)) return;
         const urls = [
           `https://cdn.cloudflare.steamstatic.com/steam/apps/${match.appid}/library_hero.jpg`,
           `https://cdn.cloudflare.steamstatic.com/steam/apps/${match.appid}/capsule_616x353.jpg`,
           `https://cdn.cloudflare.steamstatic.com/steam/apps/${match.appid}/header.jpg`,
           details.header_image,
-          ...(details.screenshots || []).flatMap((shot) => [shot.path_full, shot.path_thumbnail])
+          ...(details.screenshots || []).map((shot) => shot.path_full || shot.path_thumbnail)
         ].filter(Boolean);
         for (const [index, url] of Array.from(new Set(urls)).slice(0, 14).entries()) {
           const isLibraryAsset = /library_hero|capsule_616x353|header\.jpg/i.test(url);
           const weight = (isLibraryAsset ? 148 : 122) + match.confidence * 38 - index * 2;
-          downloads.push(downloadCandidate(game, url, "Steam", weight, `${details.name || match.name} / Steam ${match.appid}`));
+          downloadPlans.push({
+            url,
+            run: () => downloadCandidate(game, url, "Steam", weight, `${details.name || match.name} / Steam ${match.appid}`)
+          });
         }
       } catch (error) {
         console.warn("[cover] Steam details failed:", error.message?.slice(0, 80));
       }
-    }
+    }));
 
-    const results = await Promise.allSettled(downloads);
+    const uniqueDownloads = Array.from(new Map(downloadPlans.map((plan) => [plan.url, plan])).values());
+    const results = await Promise.allSettled(uniqueDownloads.map((plan) => plan.run()));
     const passed = results.filter((item) => item.status === "fulfilled" && item.value).length;
     if (!process.env.COVER_QUIET) {
-      console.log(`[cover:${game.title.slice(0, 20)}] Steam: ${downloads.length} downloaded, ${passed} passed quality`);
+      console.log(`[cover:${game.title.slice(0, 20)}] Steam: ${uniqueDownloads.length} downloaded, ${passed} passed quality`);
     }
     return results.flatMap((item) => (item.status === "fulfilled" && item.value ? [item.value] : []));
   }
@@ -1948,8 +2142,7 @@ async function officialImageCandidatesFromPage(game, pageUrl, depth = 1, visited
   if (visited.has(pageUrl) || visited.size >= 8) return [];
   visited.add(pageUrl);
   try {
-    await limitDomain(pageUrl, 3);
-    const response = await fetch(pageUrl, {
+    const response = await fetchCover(pageUrl, {
       headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36" },
       signal: AbortSignal.timeout(6000)
     });
@@ -1982,7 +2175,7 @@ async function bangumiOfficialLinks(query) {
     const titleScore = Math.max(similarity(query, item.name || ""), similarity(query, item.name_cn || ""));
     if (titleScore < 0.55) continue;
     try {
-      const response = await fetch(`https://api.bgm.tv/v0/subjects/${item.id}`, {
+        const response = await fetchCover(`https://api.bgm.tv/v0/subjects/${item.id}`, {
         headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36 (local personal use)" },
         signal: AbortSignal.timeout(6000)
       });
@@ -2003,20 +2196,20 @@ async function bangumiOfficialLinks(query) {
 }
 
 async function findCoverCandidates(game) {
+  return coverSearchAttempts.run([], async () => {
   const cached = readCoverCandidateCache(game);
-  if (cached.length >= 6) return cached;
+  if (hasCachedCoverCandidates(cached)) return cached;
 
   const localCandidates = [
     existingCoverCandidate(game)
   ].filter(Boolean);
 
-  const sourceLabels = ["Steam", "Lzacg", "VNDB(screenshot)", "VNDB(image)", "Bangumi"];
+  const sourceLabels = ["Steam", "Lzacg", "VNDB(screenshot)", "VNDB(image)"];
   const fastResults = await Promise.allSettled([
     findSteamCandidates(game),
     findLzacgCandidates(game, { fast: true }),
     findVndbScreenshotCandidates(game),
-    findVndbImageCandidates(game),
-    findBangumiCoverCandidates(game)
+    findVndbImageCandidates(game)
   ]);
   const fastGroups = fastResults.map((result) =>
     result.status === "fulfilled" && Array.isArray(result.value) ? result.value : []
@@ -2051,13 +2244,60 @@ async function findCoverCandidates(game) {
     candidates = mergeCoverCandidates([candidates, ...slowGroups]);
   }
 
+  const summary = summarizeCoverSearch({
+    candidateCount: candidates.length,
+    attempts: coverSearchAttempts.getStore()
+  });
+  if (summary.status === "network_error") {
+    throw new Error("横版图搜索失败：外部来源均不可用，请检查网络或代理后重试");
+  }
   if (candidates.length) writeCoverCandidateCache(game, candidates);
   return candidates;
+  });
 }
 
 ipcMain.handle("library:load", async () => normalizeLibraryForRuntime(readLibrary()));
 
-ipcMain.handle("library:save", (_event, games) => writeLibrary(games));
+ipcMain.handle("library:loadDocument", async () => {
+  const document = readDocument();
+  return { ...document, games: await normalizeLibraryForRuntime(document.games) };
+});
+
+ipcMain.handle("library:save", (_event, games) => {
+  const merged = mergeAuthoritativePlayState(games, readLibrary());
+  writeLibrary(archiveGameImages(merged, app.getPath("userData")));
+});
+
+ipcMain.handle("library:saveDocument", (_event, payload) => {
+  const incoming = normalizeLibraryDocument(payload);
+  const stored = readDocument();
+  const mergedGames = mergeAuthoritativePlayState(incoming.games, stored.games);
+  const archivedGames = archiveGameImages(mergedGames, app.getPath("userData"));
+  return writeDocument({ ...incoming, games: archivedGames });
+});
+
+ipcMain.handle("library:scanLaunchCandidates", async (event, rootPath) => {
+  const key = event.sender.id;
+  const previous = activeLaunchScans.get(key);
+  previous?.abort();
+  const controller = new AbortController();
+  activeLaunchScans.set(key, controller);
+  try {
+    return await scanLaunchCandidatesAsync(rootPath, {
+      signal: controller.signal,
+      onProgress: (progress) => {
+        if (!event.sender.isDestroyed()) event.sender.send("library:scanProgress", progress);
+      }
+    });
+  } finally {
+    if (activeLaunchScans.get(key) === controller) activeLaunchScans.delete(key);
+  }
+});
+
+ipcMain.handle("library:cancelLaunchScan", (event) => {
+  activeLaunchScans.get(event.sender.id)?.abort();
+  return true;
+});
 
 ipcMain.handle("dialog:pickLaunchFile", async () => {
   const result = await dialog.showOpenDialog(mainWindow, {
@@ -2105,6 +2345,91 @@ ipcMain.handle("dialog:pickFolder", async () => {
   return result.filePaths[0];
 });
 
+ipcMain.handle("tools:status", () => {
+  const manager = getEnhancementToolManager();
+  return Object.values(manager.definitions).map((definition) => ({
+    id: definition.id,
+    name: definition.name,
+    version: definition.version,
+    sourceUrl: definition.sourceUrl,
+    license: definition.license,
+    executable: definition.executable,
+    ...manager.status(definition.id)
+  }));
+});
+
+ipcMain.handle("tools:magpiePresets", () => publicMagpiePresets());
+
+ipcMain.handle("tools:install", async (event, toolId, options = {}) => {
+  const manager = getEnhancementToolManager();
+  return manager.install(toolId, {
+    localArchivePath: options?.localArchivePath,
+    magpieConfigPath: getMagpieUserConfigPath(),
+    signal: undefined,
+    onProgress: (progress) => {
+      if (!event.sender.isDestroyed()) event.sender.send("tools:progress", progress);
+    }
+  });
+});
+
+ipcMain.handle("tools:selectExisting", (_event, toolId, executablePath) => {
+  return getEnhancementToolManager().selectExisting(toolId, executablePath);
+});
+
+ipcMain.handle("tools:validateExisting", (_event, toolId, executablePath) => {
+  try {
+    return getEnhancementToolManager().selectExisting(toolId, executablePath);
+  } catch {
+    return null;
+  }
+});
+
+ipcMain.handle("dialog:pickToolArchive", async (_event, toolId) => {
+  const definition = getEnhancementToolManager().definitions[toolId];
+  if (!definition) throw new Error("未知的增强工具");
+  const result = await dialog.showOpenDialog(mainWindow, {
+    title: `选择官方 ${definition.name} 压缩包`,
+    properties: ["openFile"],
+    filters: [{ name: "ZIP", extensions: ["zip"] }, { name: "All files", extensions: ["*"] }]
+  });
+  if (result.canceled || result.filePaths.length === 0) return null;
+  return result.filePaths[0];
+});
+
+ipcMain.handle("window:toggleFullscreen", () => {
+  return toggleWindowFullscreen(mainWindow);
+});
+
+ipcMain.handle("window:isFullscreen", () => Boolean(mainWindow?.isFullScreen()));
+
+ipcMain.handle("game:saveBackups", (_event, game) => listSaveBackups({
+  userDataPath: app.getPath("userData"),
+  gameId: game?.id
+}));
+
+ipcMain.handle("game:createSaveBackup", (_event, game) => createSaveBackup({
+  userDataPath: app.getPath("userData"),
+  gameId: game?.id,
+  savePaths: game?.savePaths,
+  reason: "manual"
+}));
+
+ipcMain.handle("game:restoreSaveBackup", (_event, game, backupId) => {
+  if (game?.currentSessionStartedAt) throw new Error("游戏正在运行，请退出游戏后再恢复存档");
+  return restoreSaveBackup({
+    userDataPath: app.getPath("userData"),
+    gameId: game?.id,
+    savePaths: game?.savePaths,
+    backupId
+  });
+});
+
+ipcMain.handle("shell:openPath", async (_event, targetPath) => {
+  if (!targetPath || !fs.existsSync(targetPath)) throw new Error("路径不可用");
+  const error = await shell.openPath(targetPath);
+  if (error) throw new Error(error);
+});
+
 ipcMain.handle("game:rescanMetadata", async (_event, game) => {
   const installPath = game.installPath || path.dirname(game.executablePath);
   return scanGameMetadata(installPath, game.executablePath);
@@ -2119,20 +2444,28 @@ ipcMain.handle("game:enrichOnlineMetadata", async (_event, game, options = {}) =
   return enrichOnlineMetadata(game);
 });
 
+ipcMain.handle("game:enrichBulkMetadata", async (_event, game) => enrichBulkMetadata(game));
+
 ipcMain.handle("game:searchMetadataCandidates", async (_event, game, keyword) => searchMetadataCandidates(game, keyword));
 
 ipcMain.handle("game:applyMetadataCandidate", async (_event, game, candidate) => hydrateMetadataCandidate(game, candidate));
 
-ipcMain.handle("game:findCoverCandidates", async (_event, game) => {
-  try {
-    return await findCoverCandidates(game);
-  } catch (error) {
-    console.error("findCoverCandidates failed:", error);
-    return [];
-  }
-});
+ipcMain.handle("game:findCoverCandidates", async (_event, game) => findCoverCandidates(game));
 
 ipcMain.handle("game:lookupBangumiRating", async (_event, game) => lookupBangumiRating(game));
+
+ipcMain.handle("game:openBangumi", async (_event, game) => {
+  // `bangumi.tv` currently returns an error page for a number of otherwise
+  // valid game subjects. `chii.in` is the same Bangumi service's active
+  // canonical site and accepts the persisted subject ids directly.
+  const subjectId = Number(game?.bgmId || 0);
+  const query = String(game?.originalTitle || game?.title || "").trim();
+  const url = subjectId > 0
+    ? `https://chii.in/subject/${subjectId}`
+    : `https://chii.in/subject_search/${encodeURIComponent(query)}?cat=4`;
+  await shell.openExternal(url);
+  return { rating: {}, url };
+});
 
 ipcMain.handle("library:export", async (_event, games) => {
   const result = await dialog.showSaveDialog(mainWindow, {
@@ -2141,7 +2474,11 @@ ipcMain.handle("library:export", async (_event, games) => {
     filters: [{ name: "JSON", extensions: ["json"] }]
   });
   if (result.canceled || !result.filePath) return "";
-  fs.writeFileSync(result.filePath, JSON.stringify(backupPayload(games), null, 2), "utf8");
+  const stored = readDocument();
+  const document = Array.isArray(games)
+    ? { ...stored, games }
+    : normalizeLibraryDocument(games || stored);
+  fs.writeFileSync(result.filePath, JSON.stringify(backupPayload(document), null, 2), "utf8");
   return result.filePath;
 });
 
@@ -2153,10 +2490,9 @@ ipcMain.handle("library:import", async () => {
   });
   if (result.canceled || result.filePaths.length === 0) return null;
   const data = JSON.parse(fs.readFileSync(result.filePaths[0], "utf8"));
-  const games = Array.isArray(data) ? data : data.games;
-  if (!Array.isArray(games)) throw new Error("Invalid backup file");
-  writeLibrary(games);
-  return games;
+  const document = normalizeLibraryDocument(data);
+  if (!document.games.length && !Array.isArray(data) && !Array.isArray(data?.games)) throw new Error("Invalid backup file");
+  return writeDocument(document);
 });
 
 ipcMain.handle("image:readDataUrl", async (_event, imagePath) => {
@@ -2171,7 +2507,7 @@ ipcMain.handle("image:readDataUrl", async (_event, imagePath) => {
   return `data:${mime};base64,${data}`;
 });
 
-function startPlaySession(game, sessionId, startedAt, trackedPids, startedMs = Date.now()) {
+function startPlaySession(game, sessionId, startedAt, trackedPids, startedMs = Date.now(), baselinePids = []) {
   const monitorRoot = monitorRootForGame(game);
   const pids = Array.isArray(trackedPids) ? trackedPids : (trackedPids ? [trackedPids] : []);
   const session = {
@@ -2181,15 +2517,30 @@ function startPlaySession(game, sessionId, startedAt, trackedPids, startedMs = D
     startedMs,
     monitorRoot,
     trackedPids: pids,
+    baselinePids: (Array.isArray(baselinePids) ? baselinePids : [])
+      .map(Number)
+      .filter((pid) => Number.isFinite(pid) && pid > 0),
     childPid: pids[0] ?? null,
     emptyChecks: 0,
     monitorTimer: null,
     watchdogTimer: null
   };
-  activePlaySessions.set(sessionId, session);
+  const games = readLibrary();
+  const hadJournal = Boolean(readJournal()[sessionId]);
+  persistStartedSession({
+    games,
+    gameId: game.id,
+    sessionId,
+    startedAt,
+    startedMs,
+    baselinePids: session.baselinePids,
+    hadJournal,
+    addJournal: journalAdd,
+    writeLibrary,
+    removeJournal: journalRemove
+  });
 
-  // Write session journal for crash recovery
-  journalAdd(game.id, sessionId, startedAt, startedMs);
+  activePlaySessions.set(sessionId, session);
 
   // Start monitoring immediately; give the game time to start its process tree
   scheduleMonitorCheck(session, pids.length > 0 ? 6000 : 10000);
@@ -2212,21 +2563,23 @@ async function scheduleMonitorCheck(session, delay) {
     const current = activePlaySessions.get(session.sessionId);
     if (!current) return;
 
-    let anyAlive = false;
-
-    // Check all tracked PIDs (child process tree) first — narrowest detection
-    if (current.trackedPids && current.trackedPids.length > 0) {
-      const results = await Promise.all(current.trackedPids.map((pid) => isPidAlive(pid)));
-      anyAlive = results.some(Boolean);
+    // Localized launch wrappers can exit after spawning the real game engine.
+    // If every tracked PID is gone, rediscover live processes under the game
+    // directory instead of ending the session prematurely.
+    const runningPids = await findRunningSessionPids({
+      trackedPids: current.trackedPids,
+      baselinePids: current.baselinePids,
+      monitorRoot: current.monitorRoot
+    });
+    if (runningPids === null) {
+      scheduleMonitorCheck(current, 4000);
+      return;
     }
-
-    // Only fall back to broad directory scan when we have no tracked PIDs
-    if (!anyAlive && current.trackedPids.length === 0) {
-      const pids = await runningProcessIdsUnder(current.monitorRoot);
-      anyAlive = pids.length > 0;
-    }
+    const anyAlive = runningPids.length > 0;
 
     if (anyAlive) {
+      current.trackedPids = runningPids;
+      current.childPid = runningPids[0] ?? null;
       current.emptyChecks = 0;
       scheduleMonitorCheck(current, 4000);
       return;
@@ -2244,15 +2597,7 @@ async function scheduleMonitorCheck(session, delay) {
 function finishPlaySession(sessionId) {
   const current = activePlaySessions.get(sessionId);
   if (!current) return;
-  activePlaySessions.delete(sessionId);
-  if (current.monitorTimer) clearTimeout(current.monitorTimer);
-  if (current.watchdogTimer) clearInterval(current.watchdogTimer);
-
-  // Clear session journal on clean finish
-  journalRemove(sessionId);
-  const endedMs = Date.now();
-  const endedAt = new Date(endedMs).toISOString();
-  const durationSeconds = Math.max(0, Math.round((endedMs - current.startedMs) / 1000));
+  const { endedAt, durationSeconds } = freezeSessionCompletion(current);
 
   const games = readLibrary();
   const game = games.find((g) => g.id === current.gameId);
@@ -2266,11 +2611,25 @@ function finishPlaySession(sessionId) {
     });
     game.sessions = sessions.slice(-50);
     game.totalPlaySeconds = (game.totalPlaySeconds ?? 0) + durationSeconds;
-    game.currentSessionId = null;
-    game.currentSessionStartedAt = null;
+    clearSessionIfCurrent(game, current.sessionId);
     game.lastPlayedAt = endedAt;
   }
-  writeLibrary(games);
+  try {
+    persistCompletedSession({
+      games,
+      sessionId,
+      writeLibrary,
+      removeJournal: journalRemove
+    });
+  } catch (error) {
+    console.error("[play-session] failed to persist completed session", error);
+    scheduleMonitorCheck(current, 4000);
+    return;
+  }
+
+  activePlaySessions.delete(sessionId);
+  if (current.monitorTimer) clearTimeout(current.monitorTimer);
+  if (current.watchdogTimer) clearInterval(current.watchdogTimer);
 
   const payload = {
     gameId: current.gameId,
@@ -2296,6 +2655,29 @@ function runPowerShell(script) {
   });
 }
 
+function launchGameWithWarmMagpie(game, settings, presetResult) {
+  return new Promise((resolve, reject) => {
+    const invokeArgs = ["-NoProfile", "-NonInteractive", "-File",
+      app.isPackaged ? path.join(process.resourcesPath, "invoke-magpie.ps1") : path.join(__dirname, "integrations", "invoke-magpie.ps1"),
+      "-MagpiePath", String(settings.magpiePath || ""),
+      "-GamePath", game.executablePath,
+      "-GameWorkingDirectory", game.workingDirectory || path.dirname(game.executablePath)];
+    if (presetResult.changed) invokeArgs.push("-RestartForPreset");
+    execFile("powershell.exe", invokeArgs, { windowsHide: true, timeout: 70000, encoding: "utf8" }, (error, stdout = "") => {
+      try {
+        const result = JSON.parse(stdout.trim());
+        if (error || !result.scaled || !Number.isInteger(result.processId)) {
+          const failure = new Error(result.error || "Magpie 未能确认游戏缩放画面");
+          failure.processId = Number.isInteger(result.processId) && result.processId > 0 ? result.processId : null;
+          reject(failure);
+        } else resolve(result);
+      } catch (parseError) {
+        reject(error || parseError);
+      }
+    });
+  });
+}
+
 async function readGameWindowState(pid) {
   const script = "$p=Get-Process -Id " + Number(pid) + " -ErrorAction SilentlyContinue; if(-not $p){exit 2}; $h=$p.MainWindowHandle; if($h -eq 0){@{hasWindow=$false}|ConvertTo-Json -Compress; exit}; Add-Type -TypeDefinition 'using System; using System.Runtime.InteropServices; public static class W { [DllImport(\"user32.dll\")] public static extern bool GetWindowRect(IntPtr h, out R r); [DllImport(\"user32.dll\")] public static extern IntPtr GetWindowLongPtr(IntPtr h, int i); [StructLayout(LayoutKind.Sequential)] public struct R { public int L; public int T; public int R; public int B; } }'; $r=New-Object W+R; [W]::GetWindowRect($h,[ref]$r)|Out-Null; $s=[W]::GetWindowLongPtr($h,-16).ToInt64(); Add-Type -AssemblyName System.Windows.Forms; $screen=[System.Windows.Forms.Screen]::PrimaryScreen.Bounds; @{hasWindow=$true; windowed=(!(($r.R-$r.L) -ge $screen.Width -and ($r.B-$r.T) -ge $screen.Height -and (($s -band 0x80000000) -ne 0)))}|ConvertTo-Json -Compress";
   try { return JSON.parse(await runPowerShell(script)); } catch { return { hasWindow: false }; }
@@ -2311,102 +2693,170 @@ async function waitForGameWindow(pid, timeoutMs = 15000) {
   return { hasWindow: false };
 }
 
-function toSendKeys(shortcut) {
-  const parts = String(shortcut).split("+").map((part) => part.trim()).filter(Boolean);
-  if (parts.length < 2) throw new Error("Magpie 快捷键格式应为 Alt+Shift+Q");
-  const key = parts.pop().toUpperCase();
-  const modifiers = parts.map((part) => ({ ALT: "%", CTRL: "^", CONTROL: "^", SHIFT: "+" }[part.toUpperCase()])).join("");
-  if (!modifiers || /WIN|META/i.test(parts.join(" "))) throw new Error("暂不支持 Win 键，请在 Magpie 中改用 Alt/Ctrl/Shift 组合");
-  const encodedKey = /^F(?:[1-9]|1[0-2])$/.test(key) ? `{${key}}` : key.length === 1 ? key : `{${key}}`;
-  return modifiers + encodedKey;
+async function collectDescendantPids(rootPid) {
+  const seen = new Set([Number(rootPid)]);
+  const queue = [Number(rootPid)];
+  while (queue.length > 0) {
+    const parentPid = queue.shift();
+    const children = await getChildPids(parentPid);
+    for (const childPid of children) {
+      const normalized = Number(childPid);
+      if (!Number.isFinite(normalized) || normalized <= 0 || seen.has(normalized)) continue;
+      seen.add(normalized);
+      queue.push(normalized);
+    }
+  }
+  return [...seen].filter((pid) => pid > 0);
 }
 
-async function sendMagpieShortcut(shortcut, pid) {
-  const keys = toSendKeys(shortcut).replace(/'/g, "''");
-  await runPowerShell("$w=New-Object -ComObject WScript.Shell; if(-not $w.AppActivate(" + Number(pid) + ")){exit 3}; Start-Sleep -Milliseconds 150; $w.SendKeys('" + keys + "')");
+async function waitForGameWindowInTree(rootPid, timeoutMs = 15000) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const processIds = await collectDescendantPids(rootPid);
+    for (const processId of processIds) {
+      const state = await readGameWindowState(processId);
+      if (state.hasWindow) return { ...state, pid: processId };
+    }
+    await new Promise((resolve) => setTimeout(resolve, 250));
+  }
+  return { hasWindow: false };
 }
 
 ipcMain.handle("game:launch", async (_event, game, integrationSettings = {}) => {
-  if (!game?.executablePath || !fs.existsSync(game.executablePath)) {
-    throw new Error("Launch file does not exist");
+  const target = inspectLaunchTarget(game);
+  if (!target.available) return { launched: false, reason: target.reason };
+  const magpieEnabled = isGameEnhancementEnabled(game, "magpie");
+  const magpieSettings = { ...integrationSettings, magpieEnabled, magpiePresetId: game?.magpiePresetId || "balanced" };
+
+  if (!reserveGameLaunch(activePlaySessions.values(), pendingGameLaunches, game.id)) {
+    throw new Error("该游戏已在记录游玩时长，请勿重复启动");
   }
 
-  await launchWithIntegration(game, integrationSettings, {
-    spawnImpl: spawn,
-    isRunning: () => new Promise((resolve) => {
-      execFile("tasklist", ["/FI", "IMAGENAME eq Magpie.exe", "/NH"], { windowsHide: true }, (_error, stdout = "") => {
-        resolve(/Magpie\.exe/i.test(stdout));
-      });
-    })
-  });
-
-  const startedAt = new Date().toISOString();
-  const sessionId = crypto.randomUUID();
-  const ext = path.extname(game.executablePath).toLowerCase();
-  if (ext === ".lnk") {
-    if (integrationSettings.magpieEnabled) throw new Error("Magpie 联动无法验证快捷方式目标窗口，请直接选择游戏 exe");
-    await shell.openPath(game.executablePath);
-    startPlaySession(game, sessionId, startedAt, null);
-    return { launched: true, sessionId, startedAt };
-  }
-
-  const child = spawn(game.executablePath, [], {
-    cwd: game.workingDirectory || path.dirname(game.executablePath),
-    detached: true,
-    shell: ext === ".bat" || ext === ".cmd",
-    stdio: "ignore",
-    windowsHide: false
-  });
-
-  if (integrationSettings.magpieEnabled) {
-    try {
-      await prepareMagpieScaling(child.pid, integrationSettings, {
-        waitForWindow: (pid) => waitForGameWindow(pid),
-        sendShortcut: (shortcut, pid) => sendMagpieShortcut(shortcut, pid)
-      });
-    } catch (error) {
-      try { child.kill(); } catch {}
-      throw error;
+  try {
+    const configuredLocalePath = game?.localeEmulator?.executablePath || integrationSettings.localeEmulatorPath;
+    const localeGame = game?.localeEmulator?.enabled && configuredLocalePath
+      ? { ...game, localeEmulator: { ...game.localeEmulator, executablePath: configuredLocalePath } }
+      : game;
+    const localePlan = prepareLocaleEmulator(localeGame);
+    const baselinePids = await captureProcessBaseline(monitorRootForGame(game));
+    const startedAt = new Date().toISOString();
+    const sessionId = crypto.randomUUID();
+    const ext = path.extname(game.executablePath).toLowerCase();
+    if (ext === ".lnk") {
+      if (magpieEnabled) throw new Error("Magpie 联动无法验证快捷方式目标窗口，请直接选择游戏 exe");
+      await shell.openPath(game.executablePath);
+      startPlaySession(game, sessionId, startedAt, null, Date.now(), baselinePids);
+      return { launched: true, sessionId, startedAt };
     }
-  }
 
-  startPlaySession(game, sessionId, startedAt, [child.pid]);
-
-  // Capture child process tree PIDs after a short delay to let the tree form
-  setTimeout(async () => {
-    const s = activePlaySessions.get(sessionId);
-    if (!s) return;
-    try {
-      const childPids = await getChildPids(child.pid);
-      if (childPids.length > 0) {
-        s.trackedPids = [child.pid, ...childPids];
-        s.childPid = child.pid;
+    let integrationWarning = "";
+    let child = null;
+    let childPid = null;
+    let warmMagpieLaunch = false;
+    if (magpieEnabled && !localePlan && ext !== ".bat" && ext !== ".cmd") {
+      try {
+        const presetResult = applyMagpiePreset(magpieSettings.magpiePath, magpieSettings.magpiePresetId);
+        const result = await launchGameWithWarmMagpie(game, magpieSettings, presetResult);
+        childPid = result.processId;
+        warmMagpieLaunch = true;
+      } catch (error) {
+        if (Number.isInteger(error?.processId) && error.processId > 0) {
+          childPid = error.processId;
+          warmMagpieLaunch = true;
+          integrationWarning = `游戏已启动，但超分联动失败：${error.message}`;
+        } else {
+          throw new Error(`游戏未启动：超分预热失败：${error instanceof Error ? error.message : "窗口未能识别"}`);
+        }
       }
-    } catch {
-      // Silent — keep the original single PID tracking
+    } else {
+      child = localePlan ? launchLocaleEmulator(localePlan) : spawn(game.executablePath, [], {
+        cwd: game.workingDirectory || path.dirname(game.executablePath),
+        detached: true,
+        shell: ext === ".bat" || ext === ".cmd",
+        stdio: "ignore",
+        windowsHide: false
+      });
+      await new Promise((resolve, reject) => {
+        child.once("spawn", resolve);
+        child.once("error", reject);
+      });
+      childPid = child.pid;
     }
-  }, 2000);
 
-  child.once("exit", () => {
-    const s = activePlaySessions.get(sessionId);
-    if (s) scheduleMonitorCheck(s, 500);
-  });
-  child.once("error", () => {
-    const s = activePlaySessions.get(sessionId);
-    if (s) scheduleMonitorCheck(s, 500);
-  });
-  child.unref();
-  return { launched: true, sessionId, startedAt };
+    startPlaySession(game, sessionId, startedAt, [childPid], Date.now(), baselinePids);
+
+    if (magpieEnabled && !warmMagpieLaunch) {
+      try {
+        const presetResult = applyMagpiePreset(magpieSettings.magpiePath, magpieSettings.magpiePresetId);
+        await prepareMagpieScaling(childPid, magpieSettings, {
+          waitForWindow: (pid) => waitForGameWindowInTree(pid),
+          invokeScaling: (magpiePath, pid) => new Promise((resolve, reject) => {
+            const invokeArgs = ["-NoProfile", "-NonInteractive", "-File",
+              app.isPackaged ? path.join(process.resourcesPath, "invoke-magpie.ps1") : path.join(__dirname, "integrations", "invoke-magpie.ps1"),
+              "-MagpiePath", String(magpiePath || ""), "-GameProcessId", String(pid)];
+            if (presetResult.changed) invokeArgs.push("-RestartForPreset");
+            execFile("powershell.exe", invokeArgs,
+            { windowsHide: true, timeout: 70000, encoding: "utf8" }, (error, stdout) => {
+              try {
+                const result = JSON.parse(stdout.trim());
+                if (error || !result.scaled) reject(new Error(result.error || "Magpie 缩放失败"));
+                else resolve(result);
+              } catch (parseError) { reject(error || parseError); }
+            });
+          })
+        });
+      } catch (error) {
+        integrationWarning = `游戏已启动，但超分联动失败：${error instanceof Error ? error.message : "窗口未能识别"}`;
+        console.warn("[magpie] game remains running after integration failure", error);
+      }
+    }
+
+    // Capture child process tree PIDs after a short delay to let the tree form
+    setTimeout(async () => {
+      const s = activePlaySessions.get(sessionId);
+      if (!s) return;
+      try {
+        const childPids = await getChildPids(childPid);
+        if (childPids.length > 0) {
+          s.trackedPids = [childPid, ...childPids];
+          s.childPid = childPid;
+        }
+      } catch {
+        // Silent — keep the original single PID tracking
+      }
+    }, 2000);
+
+    if (child) {
+      child.once("exit", () => {
+        const s = activePlaySessions.get(sessionId);
+        if (s) scheduleMonitorCheck(s, 500);
+      });
+      child.once("error", () => {
+        const s = activePlaySessions.get(sessionId);
+        if (s) scheduleMonitorCheck(s, 500);
+      });
+      child.unref();
+    }
+    return { launched: true, sessionId, startedAt, integrationWarning: integrationWarning || undefined };
+  } finally {
+    releaseGameLaunch(pendingGameLaunches, game.id);
+  }
 });
 
 ipcMain.on("perf:first-paint-ack", () => markPerf("first-paint-ack"));
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   markPerf("app-ready");
   Menu.setApplicationMenu(null);
 
-  // Proxy: only use if PROXY_PORT env var is set
-  configureProxy(process.env.PROXY_PORT);
+  directSession = session.fromPartition("gal-launcher-direct");
+  await directSession.setProxy({ mode: "direct" });
+  const environmentProxy = environmentProxyConfiguration(process.env);
+  if (environmentProxy) {
+    environmentProxySession = session.fromPartition("gal-launcher-environment-proxy");
+    await environmentProxySession.setProxy(environmentProxy);
+  }
+  await configureProxy(process.env.PROXY_PORT);
 
   protocol.handle("local-file", (request) => {
     const url = new URL(request.url);

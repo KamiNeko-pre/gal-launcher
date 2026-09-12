@@ -1,5 +1,6 @@
 import type { CSSProperties } from "react";
 import { formatPlayTime } from "../utils";
+import { CollectionScopeSelect } from "../components/CollectionScopeSelect";
 import type { LibraryController } from "../useLibrary";
 
 export function ArcadeLayout({ lib }: { lib: LibraryController }) {
@@ -15,6 +16,7 @@ export function ArcadeLayout({ lib }: { lib: LibraryController }) {
     selectedImage,
     filteredGames,
     collectionGames,
+    openCollectionGame,
     counts,
     totalSeconds,
     recentGames,
@@ -54,9 +56,9 @@ export function ArcadeLayout({ lib }: { lib: LibraryController }) {
           <aside className="pad-left">
             <div className="pad-label">SELECT MODE</div>
             <div className="dpad">
-              <button className={`dbtn up ${allOn ? "on" : ""}`} title="全部" onClick={() => { setViewMode("library"); setStatusFilter("全部"); }}><b>全</b><span>ALL</span></button>
-              <button className={`dbtn left ${favOn ? "on" : ""}`} title="收藏柜" onClick={() => { setViewMode("collection"); setStatusFilter("全部"); }}><b>柜</b><span>FAV</span></button>
-              <button className={`dbtn right ${nowOn ? "on" : ""}`} title="进行中" onClick={() => { setViewMode("library"); setStatusFilter("进行中"); }}><b>读</b><span>NOW</span></button>
+              <button className={`dbtn up ${allOn ? "on" : ""}`} title="主页" onClick={() => { setViewMode("library"); setStatusFilter("全部"); }}><b>主</b><span>HOME</span></button>
+              <button className={`dbtn left ${favOn ? "on" : ""}`} title="书架" onClick={() => { setViewMode("collection"); setStatusFilter("全部"); }}><b>柜</b><span>书架</span></button>
+              <button className={`dbtn right ${lib.isCategoriesOpen ? "on" : ""}`} aria-label="分类" onClick={() => lib.setIsCategoriesOpen(true)}><b>类</b><span>分类</span></button>
               <div className="dhub" />
             </div>
             <div className="pad-label sys">SYSTEM</div>
@@ -73,7 +75,7 @@ export function ArcadeLayout({ lib }: { lib: LibraryController }) {
 
             <div className="hud">
               <div className="hud-search">
-                <i>SRCH&gt;</i>
+                <CollectionScopeSelect lib={lib} />
                 <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="title / studio / tag" />
                 <span className="cur">_</span>
               </div>
@@ -86,7 +88,7 @@ export function ArcadeLayout({ lib }: { lib: LibraryController }) {
             </div>
 
             {viewMode === "collection" ? (
-              <div className="ac-catalog">
+              <div className="ac-catalog" data-game-grid>
                 <div className="cat-head"><h2>FAVORITES</h2><span>{collectionGames.length}</span></div>
                 {collectionGames.length > 0 ? (
                   <div className="cat-grid">
@@ -96,7 +98,8 @@ export function ArcadeLayout({ lib }: { lib: LibraryController }) {
                         <button
                           key={game.id}
                           className={`cat-card ${game.id === selected?.id ? "on" : ""}`}
-                          onClick={() => { setSelectedId(game.id); setViewMode("library"); }}
+                          data-game-id={game.id}
+                          onClick={() => openCollectionGame(game.id)}
                           onContextMenu={(e) => openContextMenu(e, game)}
                         >
                           <div className="cat-art" style={poster ? { backgroundImage: `url("${poster}")` } : undefined}>
@@ -194,7 +197,8 @@ export function ArcadeLayout({ lib }: { lib: LibraryController }) {
                 <button
                   key={game.id}
                   className={`cart ${game.id === selected?.id ? "on" : ""}`}
-                  onClick={() => { setSelectedId(game.id); if (viewMode === "collection") setViewMode("library"); }}
+                  data-game-id={game.id}
+                  onClick={() => { if (viewMode === "collection") openCollectionGame(game.id); else setSelectedId(game.id); }}
                   onContextMenu={(e) => openContextMenu(e, game)}
                 >
                   <div className="cart-cv" style={poster ? { backgroundImage: `url("${poster}")` } : undefined} />

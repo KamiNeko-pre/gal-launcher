@@ -24,14 +24,15 @@ async function launchWithIntegration(game, settings = {}, deps = {}) {
   return { integration: "magpie", magpieStarted: result.started, path: result.path };
 }
 
-async function prepareMagpieScaling(processId, settings = {}, { waitForWindow, sendShortcut } = {}) {
+async function prepareMagpieScaling(processId, settings = {}, { waitForWindow, invokeScaling } = {}) {
   if (!settings.magpieEnabled) return { integration: "disabled" };
-  if (!settings.magpieShortcut) throw Object.assign(new Error("未配置 Magpie 窗口化缩放快捷键"), { code: "shortcut_missing" });
   const state = await waitForWindow(processId);
   if (!state?.hasWindow) throw Object.assign(new Error("游戏没有创建可用窗口"), { code: "window_missing" });
   if (!state.windowed) throw Object.assign(new Error("游戏未以窗口模式启动，请先在游戏内设置为窗口模式"), { code: "window_mode_required" });
-  await sendShortcut(settings.magpieShortcut, processId);
-  return { integration: "magpie", windowed: true, shortcut: settings.magpieShortcut };
+  const targetProcessId = Number(state.pid) > 0 ? Number(state.pid) : processId;
+  const result = await invokeScaling(settings.magpiePath, targetProcessId);
+  if (!result?.scaled || result.processId !== targetProcessId) throw Object.assign(new Error(result?.error || "Magpie 未能确认游戏缩放画面"), { code: "scaling_unverified" });
+  return { ...result, integration: "magpie", sourceWindowed: true, mode: "fullscreen" };
 }
 
 module.exports = { validateMagpiePath, ensureMagpieRunning, launchWithIntegration, prepareMagpieScaling };

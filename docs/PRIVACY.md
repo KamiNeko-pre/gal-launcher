@@ -27,6 +27,7 @@ The app may contact third-party services when you use features such as:
 - Find cover/background candidates
 - Lookup Bangumi rating
 - Download a selected image candidate
+- Download Locale Emulator or Magpie from official GitHub releases, when requested by the user
 
 Search queries may include game titles, folder names, or names you type manually. Local absolute paths are not intentionally sent as search queries, but users should still avoid typing private information into search fields.
 

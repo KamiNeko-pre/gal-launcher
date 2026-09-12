@@ -53,4 +53,27 @@ desktop.ini
 coverage/
 playwright-report/
 test-results/
-artifacts/perf/
+artifacts/
+
+# Local assistant/editor state and design drafts
+.reasonix/
+.codegraph/
+.gstack/
+.tmp*/
+tools/*
+!tools/library-navigation-contract.test.mjs
+docs/FEATURE_TODO.md
+docs/BOOKSHELF_IMMERSION_SPEC.md
+docs/assets/screenshots/cinema-showcase-oversized-cover-bug.png
+docs/assets/screenshots/side-sheet.png
+design-mockups/
+design/
+docs/superpowers/
+docs/COMPETITIVE_REVIEW.md
+fix-codex-computer-use-offline.ps1
+
+# Keep only production icon assets in build/
+build/*
+!build/icon.ico
+!build/icon.png
+!build/electron-icon.png

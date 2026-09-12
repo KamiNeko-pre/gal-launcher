@@ -1,4 +1,5 @@
 import { formatPlayTime } from "../utils";
+import { CollectionScopeSelect } from "../components/CollectionScopeSelect";
 import type { LibraryController } from "../useLibrary";
 
 export function AtelierLayout({ lib }: { lib: LibraryController }) {
@@ -14,6 +15,7 @@ export function AtelierLayout({ lib }: { lib: LibraryController }) {
     selectedImage,
     filteredGames,
     collectionGames,
+    openCollectionGame,
     counts,
     totalSeconds,
     popularTags,
@@ -40,17 +42,17 @@ export function AtelierLayout({ lib }: { lib: LibraryController }) {
 
       <div className="clipbar">
         <div className="logo"><span className="stamp">GAL</span><strong>atelier</strong><em>～ 我的视觉小说手账</em></div>
-        <label className="search"><span>q.</span><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="搜索标题、会社、标签" /></label>
+        <div className="search"><CollectionScopeSelect lib={lib} /><input aria-label="搜索游戏" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="搜索标题、会社、标签" /></div>
         <div className="clips">
-          <button className={`clip ${allOn ? "on" : ""}`} title="全部" onClick={() => { setViewMode("library"); setStatusFilter("全部"); }}><span>全部</span></button>
-          <button className={`clip ${favOn ? "on" : ""}`} title="收藏柜" onClick={() => { setViewMode("collection"); setStatusFilter("全部"); }}><span>收藏</span></button>
-          <button className={`clip ${nowOn ? "on" : ""}`} title="进行中" onClick={() => { setViewMode("library"); setStatusFilter("进行中"); }}><span>进行</span></button>
+          <button className={`clip ${allOn ? "on" : ""}`} title="主页" onClick={() => { setViewMode("library"); setStatusFilter("全部"); }}><span>主页</span></button>
+          <button className={`clip ${favOn ? "on" : ""}`} title="书架" onClick={() => { setViewMode("collection"); setStatusFilter("全部"); }}><span>书架</span></button>
+          <button className={`clip ${lib.isCategoriesOpen ? "on" : ""}`} aria-label="分类" onClick={() => lib.setIsCategoriesOpen(true)}><span>分类</span></button>
           <button className="clip" title="主题设置" onClick={() => setIsThemeOpen(true)}><span>主题</span></button>
         </div>
       </div>
 
       {viewMode === "collection" ? (
-        <main className="board catalog-board">
+        <main className="board catalog-board" data-game-grid>
           <div className="cat-head"><h2>我的相册</h2><span>{collectionGames.length} 张</span></div>
           {collectionGames.length > 0 ? (
             <div className="cat-grid">
@@ -60,8 +62,9 @@ export function AtelierLayout({ lib }: { lib: LibraryController }) {
                   <button
                     key={game.id}
                     className={`cat-card ${game.id === selected?.id ? "on" : ""}`}
+                    data-game-id={game.id}
                     style={{ "--r": `${((i % 5) - 2) * 1.6}deg` } as React.CSSProperties}
-                    onClick={() => { setSelectedId(game.id); setViewMode("library"); }}
+                    onClick={() => openCollectionGame(game.id)}
                     onContextMenu={(e) => openContextMenu(e, game)}
                   >
                     <div className="cat-ph" style={poster ? { backgroundImage: `url("${poster}")` } : undefined}>
@@ -90,13 +93,21 @@ export function AtelierLayout({ lib }: { lib: LibraryController }) {
               <p className="memo">{selected.description || "还没有写下感想，点开资料卡补全这部作品 ♡"}</p>
               <div className="rate"><em>{selected.status} ・ {formatPlayTime(selected.totalPlaySeconds || 0)}</em></div>
             </div>
+            <div className="desk-actions">
             <button className="play-stamp" title="启动游戏" onClick={() => launch(selected)}>
               <span className="ink" />
               <span className="pt">▶ PLAY</span>
               <span className="ps">点 此 开 始</span>
             </button>
+            <button className="add-pin" title="添加游戏" onClick={addGame}><b>+</b><span>夹一张<br />新照片</span></button>
+            </div>
           </article>
 
+          <div className="desk-notes">
+          <div className="paperclips">
+            <button className="pclip" title="导出备份" onClick={exportBackup}><b>↓</b><span>导出</span></button>
+            <button className="pclip" title="恢复备份" onClick={importBackup}><b>↑</b><span>恢复</span></button>
+          </div>
           <aside className="note ynote" style={{ "--rot": "3deg" } as React.CSSProperties}>
             <strong>上次游玩</strong>
             <p>{lastPlayed ? `${lastPlayed.getFullYear()}.${String(lastPlayed.getMonth() + 1).padStart(2, "0")}.${String(lastPlayed.getDate()).padStart(2, "0")}` : "尚未游玩"}</p>
@@ -116,6 +127,7 @@ export function AtelierLayout({ lib }: { lib: LibraryController }) {
             <div className="trow"><b>{counts.active} / {counts.done}</b><i>进行 / 通关</i></div>
           </aside>
 
+          </div>
           {popularTags.length > 0 && (
             <div className="tagstrip" style={{ "--rot": "-1deg" } as React.CSSProperties}>
               <span className="tl">tags ♪</span>
@@ -125,12 +137,6 @@ export function AtelierLayout({ lib }: { lib: LibraryController }) {
             </div>
           )}
 
-          <button className="add-pin" title="添加游戏" onClick={addGame}><b>+</b><span>夹一张<br />新照片</span></button>
-
-          <div className="paperclips">
-            <button className="pclip" title="导出备份" onClick={exportBackup}><b>↓</b><span>导出</span></button>
-            <button className="pclip" title="恢复备份" onClick={importBackup}><b>↑</b><span>恢复</span></button>
-          </div>
         </main>
       ) : (
         <main className="board">
@@ -165,8 +171,9 @@ export function AtelierLayout({ lib }: { lib: LibraryController }) {
               <button
                 key={game.id}
                 className={`snap ${game.id === selected?.id ? "on" : ""}`}
+                data-game-id={game.id}
                 style={{ "--r": `${((i % 5) - 2) * 2}deg` } as React.CSSProperties}
-                onClick={() => { setSelectedId(game.id); if (viewMode === "collection") setViewMode("library"); }}
+                onClick={() => { if (viewMode === "collection") openCollectionGame(game.id); else setSelectedId(game.id); }}
                 onContextMenu={(e) => openContextMenu(e, game)}
               >
                 <div className="s-ph" style={poster ? { backgroundImage: `url("${poster}")` } : undefined} />

@@ -1,4 +1,5 @@
 import { formatPlayTime } from "../utils";
+import { CollectionScopeSelect } from "../components/CollectionScopeSelect";
 import type { LibraryController } from "../useLibrary";
 
 export function AuroraLayout({ lib }: { lib: LibraryController }) {
@@ -14,6 +15,7 @@ export function AuroraLayout({ lib }: { lib: LibraryController }) {
     selectedImage,
     filteredGames,
     collectionGames,
+    openCollectionGame,
     counts,
     totalSeconds,
     recentGames,
@@ -38,7 +40,7 @@ export function AuroraLayout({ lib }: { lib: LibraryController }) {
     if (!list.length) return;
     const base = idx < 0 ? 0 : idx;
     const target = list[(base + dir + list.length) % list.length];
-    if (target) { setSelectedId(target.id); if (viewMode === "collection") setViewMode("library"); }
+    if (target) { if (viewMode === "collection") openCollectionGame(target.id); else setSelectedId(target.id); }
   }
 
   const ghostLeft = idx > 0 ? list[idx - 1] : list[list.length - 1];
@@ -57,9 +59,9 @@ export function AuroraLayout({ lib }: { lib: LibraryController }) {
       <header className="float-top">
         <div className="brand"><span className="orb" /><strong>Aurora</strong></div>
         <nav className="orbs">
-          <button className={`orbtn ${allOn ? "on" : ""}`} title="全部" onClick={() => { setViewMode("library"); setStatusFilter("全部"); }}><i>◉</i><em>全部</em></button>
-          <button className={`orbtn ${favOn ? "on" : ""}`} title="收藏柜" onClick={() => { setViewMode("collection"); setStatusFilter("全部"); }}><i>♡</i><em>收藏</em></button>
-          <button className={`orbtn ${nowOn ? "on" : ""}`} title="进行中" onClick={() => { setViewMode("library"); setStatusFilter("进行中"); }}><i>◐</i><em>进行</em></button>
+          <button className={`orbtn ${allOn ? "on" : ""}`} title="主页" onClick={() => { setViewMode("library"); setStatusFilter("全部"); }}><i>◉</i><em>主页</em></button>
+          <button className={`orbtn ${favOn ? "on" : ""}`} title="书架" onClick={() => { setViewMode("collection"); setStatusFilter("全部"); }}><i>♡</i><em>书架</em></button>
+          <button className={`orbtn ${lib.isCategoriesOpen ? "on" : ""}`} aria-label="分类" onClick={() => lib.setIsCategoriesOpen(true)}><i>◐</i><em>分类</em></button>
           <span className="osep" />
           <button className="orbtn" title="导出备份" onClick={exportBackup}><i>↓</i><em>导出</em></button>
           <button className="orbtn" title="恢复备份" onClick={importBackup}><i>↑</i><em>恢复</em></button>
@@ -68,7 +70,7 @@ export function AuroraLayout({ lib }: { lib: LibraryController }) {
         </nav>
       </header>
 
-      <label className="float-search"><i>⌕</i><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="搜索标题、会社、标签" /><span className="kbd">/</span></label>
+      <div className="float-search"><CollectionScopeSelect lib={lib} /><input aria-label="搜索游戏" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="搜索标题、会社、标签" /><span className="kbd">/</span></div>
 
       <main className="theater">
         <aside className="glass stat-card">
@@ -91,7 +93,7 @@ export function AuroraLayout({ lib }: { lib: LibraryController }) {
 
         <section className="stage-center">
           {viewMode === "collection" ? (
-            <div className="au-collection">
+            <div className="au-collection" data-game-grid>
               <div className="au-collection-head">
                 <span>收藏柜</span>
                 <strong>{collectionGames.length} 部作品</strong>
@@ -104,7 +106,8 @@ export function AuroraLayout({ lib }: { lib: LibraryController }) {
                       <button
                         key={game.id}
                         className={`au-collection-card ${game.id === selected?.id ? "on" : ""}`}
-                        onClick={() => { setSelectedId(game.id); setViewMode("library"); }}
+                        data-game-id={game.id}
+                        onClick={() => openCollectionGame(game.id)}
                         onContextMenu={(e) => openContextMenu(e, game)}
                       >
                         <span className="au-collection-art" style={cv ? { backgroundImage: `url("${cv}")` } : undefined}>
@@ -216,9 +219,10 @@ export function AuroraLayout({ lib }: { lib: LibraryController }) {
               <button
                 key={game.id}
                 className={`frame ${game.id === selected?.id ? "on" : ""}`}
+                data-game-id={game.id}
                 style={cv ? { backgroundImage: `url("${cv}")` } : undefined}
                 title={game.title}
-                onClick={() => { setSelectedId(game.id); if (viewMode === "collection") setViewMode("library"); }}
+                  onClick={() => { if (viewMode === "collection") openCollectionGame(game.id); else setSelectedId(game.id); }}
                 onContextMenu={(e) => openContextMenu(e, game)}
               >
                 {!cv && <span className="frame-empty">{game.title.slice(0, 2)}</span>}

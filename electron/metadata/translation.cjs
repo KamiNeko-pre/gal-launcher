@@ -2,6 +2,14 @@ function hasCjk(value) {
   return /[\u3400-\u9fff]/.test(value);
 }
 
+function isAlreadyChinese(value) {
+  const text = String(value || "");
+  const han = (text.match(/[\u3400-\u9fff]/g) || []).length;
+  const latin = (text.match(/[A-Za-z]/g) || []).length;
+  const kana = (text.match(/[\u3040-\u30ff]/g) || []).length;
+  return han >= 20 && kana === 0 && han >= latin;
+}
+
 function acceptableTranslation(source, translated) {
   const value = String(translated || "").trim();
   if (!value) return false;
@@ -9,10 +17,26 @@ function acceptableTranslation(source, translated) {
   return hasCjk(value);
 }
 
-async function translateLongText(text, { chunkSize = 450, translateChunk, fallbackChunk } = {}) {
+function successfulTranslation(text) {
+  return { status: "success", text: String(text || "") };
+}
+
+function translationText(candidate, { requireStructuredResults }) {
+  if (requireStructuredResults) {
+    return candidate?.status === "success" ? candidate.text : "";
+  }
+  return candidate;
+}
+
+async function translateLongText(text, {
+  chunkSize = 450,
+  translateChunk,
+  fallbackChunk,
+  requireStructuredResults = false
+} = {}) {
   const source = String(text || "");
   if (!source) return { text: source, status: "empty", usedFallback: false };
-  if (hasCjk(source) && !/QUERY LENGTH LIMIT EXCEEDED|MAX ALLOWED QUERY/i.test(source)) {
+  if (isAlreadyChinese(source) && !/QUERY LENGTH LIMIT EXCEEDED|MAX ALLOWED QUERY/i.test(source)) {
     return { text: source, status: "already_zh", usedFallback: false };
   }
   if (typeof translateChunk !== "function" && typeof fallbackChunk !== "function") {
@@ -30,7 +54,7 @@ async function translateLongText(text, { chunkSize = 450, translateChunk, fallba
     let translatedChunk = "";
     if (translateChunk) {
       try {
-        const candidate = await translateChunk(chunk);
+        const candidate = translationText(await translateChunk(chunk), { requireStructuredResults });
         if (acceptableTranslation(chunk, candidate)) translatedChunk = String(candidate).trim();
       } catch {
         // Try the fallback provider for this same chunk.
@@ -38,7 +62,7 @@ async function translateLongText(text, { chunkSize = 450, translateChunk, fallba
     }
     if (!translatedChunk && fallbackChunk) {
       try {
-        const candidate = await fallbackChunk(chunk);
+        const candidate = translationText(await fallbackChunk(chunk), { requireStructuredResults });
         if (acceptableTranslation(chunk, candidate)) {
           translatedChunk = String(candidate).trim();
           usedFallback = true;
@@ -57,9 +81,9 @@ async function translateLongText(text, { chunkSize = 450, translateChunk, fallba
 
   return {
     text: failedChunks === chunks.length ? source : translated.join("\n").trim(),
-    status: failed ? "failed" : "success",
+    status: failed ? (failedChunks === chunks.length ? "failed" : "partial") : "success",
     usedFallback
   };
 }
 
-module.exports = { translateLongText };
+module.exports = { successfulTranslation, translateLongText };

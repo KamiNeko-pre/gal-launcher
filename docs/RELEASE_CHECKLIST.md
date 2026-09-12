@@ -17,11 +17,9 @@ Use this checklist before publishing a new Gal Launcher release.
 
 ## Build
 
-Fast review build:
+Directory build (close the running app normally before packaging):
 
 ```powershell
-Stop-Process -Name "Gal Launcher" -Force -ErrorAction SilentlyContinue
-Start-Sleep -Seconds 1
 npm run dist
 ```
 
@@ -31,13 +29,13 @@ npm run dist
 npm run build && electron-builder --win dir
 ```
 
-Review executable:
+Packaged executable:
 
 ```text
 release/win-unpacked/Gal Launcher.exe
 ```
 
-Do not run `npm run dist:portable` for the normal review path. The portable build compresses the full Electron runtime into a single exe and is much slower.
+For a single-file portable release, use `npm run dist:portable`. Distribute all runtime files together when releasing the directory build.
 
 ## Manual QA
 

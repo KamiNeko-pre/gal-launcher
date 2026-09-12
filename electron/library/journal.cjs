@@ -14,9 +14,16 @@ function createSessionJournal({ getUserDataPath, fsImpl = fs } = {}) {
     fsImpl.mkdirSync(path.dirname(filePath()), { recursive: true });
     fsImpl.writeFileSync(filePath(), JSON.stringify(value, null, 2), "utf8");
   }
-  function add(gameId, sessionId, startedAt, startedMs) {
+  function add(gameId, sessionId, startedAt, startedMs, metadata = {}) {
     const journal = read();
-    journal[sessionId] = { gameId, sessionId, startedAt, startedMs };
+    journal[sessionId] = {
+      ...(journal[sessionId] || {}),
+      ...metadata,
+      gameId,
+      sessionId,
+      startedAt,
+      startedMs
+    };
     write(journal);
   }
   function remove(sessionId) {

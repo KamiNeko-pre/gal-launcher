@@ -1,221 +1,69 @@
-<p align="center">
-  <img src="docs/assets/screenshots/hero-cinema-2026.png" alt="Gal Launcher · Cinema theme" width="960">
-</p>
+# Gal Launcher
 
-<h1 align="center">✨ Gal Launcher</h1>
+面向 Windows 的本地 Galgame / 视觉小说启动器。把散落在硬盘里的作品整理成游戏库，补全资料与封面，记录游玩情况。
 
-<p align="center">
-  <strong>把散落在硬盘里的视觉小说，变成一个想再次打开的书架。</strong>
-  <br>
-  <sub>Organize, rediscover, and launch your local visual novel library — beautifully.</sub>
-</p>
+[下载发行版](https://github.com/KamiNeko-pre/gal-launcher/releases) · [使用指南](docs/USER_GUIDE.md) · [更新记录](CHANGELOG.md) · [问题反馈](https://github.com/KamiNeko-pre/gal-launcher/issues)
 
-<p align="center">
-  <a href="https://github.com/KamiNeko-pre/gal-launcher/releases"><strong>⬇️ 下载 Download</strong></a>
-  ·
-  <a href="docs/USER_GUIDE.md">📖 使用教程</a>
-  ·
-  <a href="ROADMAP.md">🗺️ 路线图</a>
-  ·
-  <a href="docs/DATA_SOURCES.md">📡 数据来源</a>
-</p>
+![Gal Launcher 的 Cinema 主题](docs/assets/screenshots/hero-cinema-2026.png)
 
-<p align="center">
-  <img alt="Windows" src="https://img.shields.io/badge/platform-Windows-8aa6bd">
-  <img alt="Electron" src="https://img.shields.io/badge/Electron-38-9fb7ca">
-  <img alt="React" src="https://img.shields.io/badge/React-19-9fb7ca">
-  <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-5.9-9fb7ca">
-  <img alt="License" src="https://img.shields.io/badge/license-MIT-d8e0e8">
-</p>
+## 功能
 
-> **免责声明 / Disclaimer**：Gal Launcher 不提供游戏本体、下载资源、破解、补丁或 DRM 绕过工具。它只管理你已经安装在本地的游戏。
+- **管理本地游戏**：添加 `.exe`、`.bat`、`.cmd` 或 `.lnk` 启动文件，从游戏库直接启动。
+- **补全作品资料**：搜索标题、原名、会社、发售日、简介和 Bangumi 评分；支持手动修正。
+- **选择封面和背景**：搜索多个来源的图片候选，也可以使用本地图片。
+- **记录游玩情况**：查看启动次数、总时长、最近游玩时间和会话历史。
+- **切换界面主题**：六套主题提供不同的作品导航和游戏库布局。
+- **批量收录游戏**：选择一个总目录，自动识别其中第一层游戏文件夹和启动 EXE。
+- **分类与排序**：自建分类、批量整理，在主页和书架切换分类范围，按标题、游玩时长等排序。
+- **沉浸模式与手柄**：全屏浏览、切换作品，打开资料、书架和主题。
+- **转区与超分**：按游戏启用 Locale Emulator 或 Magpie；支持选择已有程序或从官方来源下载部署。
+- **备份游戏库**：数据保存在本机，支持导出和恢复。
 
----
+## 下载与使用
 
-## 🤔 这到底是什么？
+1. 打开 [Releases](https://github.com/KamiNeko-pre/gal-launcher/releases)，选择发行版附件，不是 GitHub 自动生成的源码压缩包。
+2. 单文件 EXE 可直接运行，无需手动解压；ZIP 完整解压后运行其中的 `Gal Launcher.exe`。ZIP 是完整目录版，必须保留 EXE 同目录下的资源文件。
+3. 在应用中添加游戏启动文件，确认作品资料和图片，然后点击启动。
 
-硬盘里一堆 `game.exe`、`SiglusEngine.exe`、`start.exe`、`launcher.exe`，时间一久就很难分清哪个文件夹是哪部作品，想重温也找不到入口。
+本地游戏管理和启动不需要联网；在线资料、评分和图片搜索需要网络连接。当前版本未签名，Windows 可能显示未知发布者提示，请核对下载来源。
 
-Gal Launcher 把这些本地游戏整理成一个视觉小说专用启动器：
+更多操作及常见问题见 [使用指南](docs/USER_GUIDE.md)。
 
-- 🎮 给每个游戏匹配封面、横版背景、会社、发售日、标签和简介
-- 📡 从 VNDB / Bangumi / Steam 等多个来源辅助搜索资料和图片候选
-- 🎨 用多套主题展示作品库，而不是只显示文件路径
-- ⚡ 一键启动游戏，并自动记录启动次数和游玩时长
-- 🔒 数据保存在本地，支持导出备份和恢复
+## 界面主题
 
-本质上，它是一个“本地 Galgame / 视觉小说书架”。
-
----
-
-## 🎨 功能亮点
-
-<table>
-<tr>
-  <td width="50%">
-    <h4>🗃️ 本地游戏库</h4>
-    <p>添加 <code>.exe</code>、<code>.bat</code>、<code>.cmd</code>、<code>.lnk</code> 启动文件，自动设置工作目录并启动游戏。</p>
-  </td>
-  <td width="50%">
-    <h4>🔎 资料补全</h4>
-    <p>搜索标题、原名、会社、简介、发售日、标签、评分和图片候选，自动识别不准时也可以手动修正。</p>
-  </td>
-</tr>
-<tr>
-  <td>
-    <h4>🖼️ 封面与横版背景</h4>
-    <p>竖版封面用于书架和收藏页，横版图用于启动页。可以从候选里选，也可以使用本地图片。</p>
-  </td>
-  <td>
-    <h4>⏱️ 游玩追踪</h4>
-    <p>记录启动次数、总时长、最近游玩时间、当前进行状态和会话历史。</p>
-  </td>
-</tr>
-<tr>
-  <td>
-    <h4>🎭 多主题界面</h4>
-    <p>六套主题拥有不同布局、导航和收藏页，不只是换颜色。</p>
-  </td>
-  <td>
-    <h4>🔒 本地优先</h4>
-    <p>游戏库数据保存在本机。支持备份导出和恢复，不依赖云同步。</p>
-  </td>
-</tr>
-</table>
-
----
-
-## 🎨 主题系统
-
-六套完整主题，六种重逢方式。0.3.0 之后，主题不再只是配色预设：每一套都拥有自己的信息架构、作品导航和收藏页表达。
-
-| 主题 | 风格 |
+| 主题 | 界面特点 |
 | --- | --- |
-| **Cinema** | 沉浸式横版大图，保留最初的电影感启动语言 |
-| **Editorial** | 杂志跨页、刊头工具栏、目录式分页 |
-| **Arcade** | CRT 游戏机、卡带槽、像素 HUD、街机启动按钮 |
-| **Atelier** | 手账桌面、相册、便签和纸张拼贴 |
-| **Lumen Shelf** | 明亮书架、目录索引、多列作品墙 |
-| **Aurora** | 柔光剧照舞台、续读列表和玻璃信息卡 |
+| Cinema | 横版大图与沉浸式启动页 |
+| Editorial | 杂志跨页与目录式导航 |
+| Arcade | CRT、卡带和像素街机元素 |
+| Atelier | 相册、便签与手账拼贴 |
+| Lumen Shelf | 明亮书架与多列作品墙 |
+| Aurora | 柔光背景与玻璃信息卡 |
 
-<table>
-<tr>
-  <td width="50%"><img src="docs/assets/screenshots/hero-cinema-2026.png" alt="Cinema theme"><br><strong>Cinema · 沉浸式全屏舞台</strong></td>
-  <td width="50%"><img src="docs/assets/screenshots/theme-editorial-2026.png" alt="Editorial theme"><br><strong>Editorial · 杂志跨页</strong></td>
-</tr>
-<tr>
-  <td width="50%"><img src="docs/assets/screenshots/theme-arcade-2026.png" alt="Arcade theme"><br><strong>Arcade · CRT 街机</strong></td>
-  <td width="50%"><img src="docs/assets/screenshots/theme-atelier-2026.png" alt="Atelier theme"><br><strong>Atelier · 手账桌面</strong></td>
-</tr>
-<tr>
-  <td width="50%"><img src="docs/assets/screenshots/hero-lumen-shelf.png" alt="Lumen Shelf theme"><br><strong>Lumen Shelf · 明亮书架</strong></td>
-  <td width="50%"><img src="docs/assets/screenshots/theme-aurora-2026.png" alt="Aurora theme"><br><strong>Aurora · 柔光剧照舞台</strong></td>
-</tr>
-</table>
+顶部大图展示 Cinema。其余主题预览如下，点击图片可查看原图。
 
----
+| Editorial · 杂志跨页 | Arcade · 像素街机 |
+| --- | --- |
+| [![Editorial 主题](docs/assets/screenshots/theme-editorial-2026.png)](docs/assets/screenshots/theme-editorial-2026.png) | [![Arcade 主题](docs/assets/screenshots/theme-arcade-2026.png)](docs/assets/screenshots/theme-arcade-2026.png) |
 
-## ⚡ 快速开始
+| Atelier · 手账桌面 | Lumen Shelf · 明亮书架 |
+| --- | --- |
+| [![Atelier 主题](docs/assets/screenshots/theme-atelier-2026.png)](docs/assets/screenshots/theme-atelier-2026.png) | [![Lumen Shelf 主题](docs/assets/screenshots/hero-lumen-shelf.png)](docs/assets/screenshots/hero-lumen-shelf.png) |
 
-```text
-1. 下载 Gal-Launcher-vX.X.X.zip
-2. 解压后打开 Gal Launcher.exe
-3. 点击添加按钮，选择游戏启动文件
-4. 等待自动资料搜索，或手动选择候选资料
-5. 点击封面进入启动页，一键启动游戏
-```
+**Aurora · 柔光舞台**
 
-支持 `exe / bat / cmd / lnk` 四种启动方式。执行目录会自动设为游戏所在文件夹。
+[![Aurora 主题](docs/assets/screenshots/theme-aurora-2026.png)](docs/assets/screenshots/theme-aurora-2026.png)
 
-完整教程见 [使用指南](docs/USER_GUIDE.md)。
+## 数据与隐私
 
----
+游戏库、路径、图片缓存和游玩记录默认保存在 `%APPDATA%\gal-launcher\library`。导出的备份可能包含本地路径，分享前请检查内容。
 
-## 📥 下载与运行
+在线搜索使用 VNDB、GalgameWiki、Bangumi、Steam 等第三方来源，结果可能不完整或匹配错误，可以手动修改。候选项和保存后的资料卡会标注资料来源；来源与请求范围见 [数据来源说明](docs/DATA_SOURCES.md) 和 [隐私说明](docs/PRIVACY.md)。
 
-前往 [Releases](https://github.com/KamiNeko-pre/gal-launcher/releases) 下载最新版本。
+Gal Launcher 不包含游戏本体，也不提供游戏下载。界面示例中的作品图片及名称归各自权利人所有。
 
-推荐下载 zip 包，解压后运行：
+## 参与贡献
 
-```text
-win-unpacked/Gal Launcher.exe
-```
+欢迎提交问题反馈、资料源适配和界面改进。开发环境、检查与打包方法见 [贡献指南](CONTRIBUTING.md)，后续方向见 [路线图](ROADMAP.md)。
 
-如果 Windows 提示“未知发布者”，这是因为当前版本没有代码签名证书。确认文件来自本仓库 Release 后继续运行即可。
-
----
-
-## 📡 数据来源
-
-| 来源 | 用途 | 类型 |
-| --- | --- | --- |
-| VNDB | 游戏资料、会社、发行日、封面和截图候选 | API |
-| Bangumi | 条目搜索、评分、封面候选 | API / 网页 |
-| Steam | 商店图片候选 | API |
-| DLsite | 图片候选 | 网页 |
-| 2DFan | 图片候选 | 网页 |
-| 其他社区页面 | 可选补充候选 | 网页 |
-| 本地文件 | 用户手动选择的封面和背景 | 本机 |
-
-详见 [数据来源说明](docs/DATA_SOURCES.md) 和 [隐私说明](docs/PRIVACY.md)。
-
----
-
-## ⚔️ 对比
-
-| | Gal Launcher | Playnite | Steam | 手动管理 |
-| --- | :---: | :---: | :---: | :---: |
-| Galgame / 视觉小说资料搜索 | 是 | 插件依赖 | 否 | 否 |
-| Bangumi 评分 | 是 | 否 | 否 | 否 |
-| 多来源图片候选 | 是 | 插件依赖 | 否 | 否 |
-| 专门为视觉小说设计的主题 | 是 | 否 | 否 | 否 |
-| 本地离线可用 | 是 | 是 | 部分 | 是 |
-| 开源免费 | 是 | 是 | 否 | 是 |
-
----
-
-## 🛠️ 开发
-
-```powershell
-npm install
-npm run dev
-npm run build
-```
-
-快速打包审核版本：
-
-```powershell
-Stop-Process -Name "Gal Launcher" -Force -ErrorAction SilentlyContinue
-Start-Sleep -Seconds 1
-npm run dist
-```
-
-产物路径：
-
-```text
-release/win-unpacked/Gal Launcher.exe
-```
-
-常规审核不需要跑 `npm run dist:portable`。portable 单文件会把 Electron 运行时压成一个 exe，耗时明显更久。
-
-技术栈：Electron 38、React 19、TypeScript 5.9、Vite 7、lucide-react、纯 CSS 主题层。
-
----
-
-## 🗺️ 路线图
-
-见 [ROADMAP.md](ROADMAP.md)。近期方向包括主题稳定性、收藏页体验、性能优化和资料源可维护性。
-
----
-
-## 🤝 参与贡献
-
-欢迎提 Issue 和 PR。请不要上传游戏文件、下载封面、个人库数据或本地缓存。
-
-详见 [CONTRIBUTING.md](CONTRIBUTING.md) 和 [行为准则](CODE_OF_CONDUCT.md)。
-
----
-
-## 📜 License
-
-MIT © 2026 Gal Launcher
+项目使用 Electron、React 和 TypeScript，采用 [MIT 许可证](LICENSE)。

@@ -1,34 +1,50 @@
-# Contributing
+# 贡献指南
 
-Thanks for improving Gal Launcher.
+欢迎通过 Issue 报告问题、提出建议，或提交 Pull Request。
 
-## Development
+## 本地开发
 
-```bash
-npm install
+使用 Windows、Node.js 22 和 npm，与仓库 CI 环境保持一致。
+
+```powershell
+npm ci
 npm run dev
 ```
 
-Before submitting changes:
+提交前运行：
 
-```bash
-npm run build
+```powershell
+npm run check
 ```
 
-## Guidelines
+该命令执行单元测试、TypeScript 检查及前端生产构建。涉及交互或界面时，还需在应用中验证相应操作。
 
-- Keep the app local-first.
-- Do not add game downloads or links to pirated content.
-- Do not commit third-party artwork, screenshots, or user cache files.
-- Prefer official APIs for metadata sources.
-- Keep network requests conservative and cancellable.
-- Preserve Windows support unless the change explicitly targets another platform.
+## 打包
 
-## Metadata Providers
+打包前正常退出正在使用目标目录的应用，以免文件被占用。
 
-When adding a source:
+| 命令 | 产物 |
+| --- | --- |
+| `npm run dist` | `release/win-unpacked/`，包含 EXE 及运行资源 |
+| `npm run dist:portable` | `release/Gal Launcher.exe`，单文件便携版 |
 
-- Document it in `docs/DATA_SOURCES.md`.
-- Add clear source attribution in the UI.
-- Avoid automatic bulk crawling.
-- Prefer candidate selection over automatic replacement.
+目录版应整体分发，不能仅复制其中的 EXE。发布步骤见 [发布检查表](docs/RELEASE_CHECKLIST.md)。
+
+## 仓库内容
+
+保留源代码、测试、构建配置、正式图标和公开文档所需的截图。
+
+不要提交个人游戏库、下载图片缓存、密钥、构建产物、编辑器会话、进程状态文件、设计试稿或一次性维护脚本。内部工作计划和开发流水记录也不属于公开文档。
+
+README 面向使用者；开发方法放在本文或对应技术文档；CHANGELOG 记录版本变化，不记录临时调试步骤。
+
+## 开发约定
+
+- 保持本地数据可用，网络失败不应阻塞游戏库和启动功能。
+- 修改数据结构时考虑旧数据兼容及备份恢复。
+- 修复问题时提供复现步骤和与改动相称的验证结果。
+- 适配资料源时优先采用官方 API，控制请求频率，支持失败重试和用户选择。
+- 在 [数据来源说明](docs/DATA_SOURCES.md) 中记录新增来源，并在界面保留来源归属。
+- 不提交游戏本体或下载资源；示例素材需确认使用权限。
+
+参与讨论请遵守 [行为准则](CODE_OF_CONDUCT.md)。安全问题请参阅 [安全政策](SECURITY.md)。

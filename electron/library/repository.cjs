@@ -1,5 +1,6 @@
 const fs = require("node:fs");
 const path = require("node:path");
+const { normalizeLibraryDocument } = require("./bookshelves.cjs");
 
 function createLibraryRepository({ getUserDataPath, fsImpl = fs } = {}) {
   if (typeof getUserDataPath !== "function") throw new TypeError("getUserDataPath is required");
@@ -9,17 +10,36 @@ function createLibraryRepository({ getUserDataPath, fsImpl = fs } = {}) {
     return path.join(dir, "games.json");
   }
   function readLibrary() {
-    try { return JSON.parse(fsImpl.readFileSync(dataPath(), "utf8")); } catch { return []; }
+    return readDocument().games;
   }
-  function writeLibrary(games) {
-    const value = Array.isArray(games) ? games : [];
+  function readDocument() {
+    try { return normalizeLibraryDocument(JSON.parse(fsImpl.readFileSync(dataPath(), "utf8"))); } catch { return normalizeLibraryDocument([]); }
+  }
+  function writeDocument(document) {
+    const value = normalizeLibraryDocument(document);
     fsImpl.writeFileSync(dataPath(), JSON.stringify(value, null, 2), "utf8");
     return value;
   }
-  function backupPayload(games, version = 1) {
-    return { app: "Gal Launcher", version, exportedAt: new Date().toISOString(), games: Array.isArray(games) ? games : readLibrary() };
+  function writeLibrary(games) {
+    const value = Array.isArray(games) ? games : [];
+    writeDocument({ ...readDocument(), games: value });
+    return value;
   }
-  return { dataPath, readLibrary, writeLibrary, backupPayload };
+  function backupPayload(documentOrGames, version = 2) {
+    const document = Array.isArray(documentOrGames)
+      ? { ...readDocument(), games: documentOrGames }
+      : documentOrGames && typeof documentOrGames === "object"
+        ? normalizeLibraryDocument(documentOrGames)
+        : readDocument();
+    return {
+      app: "Gal Launcher",
+      version,
+      exportedAt: new Date().toISOString(),
+      games: document.games,
+      bookshelves: document.bookshelves
+    };
+  }
+  return { dataPath, readLibrary, writeLibrary, readDocument, writeDocument, backupPayload };
 }
 
 module.exports = { createLibraryRepository };

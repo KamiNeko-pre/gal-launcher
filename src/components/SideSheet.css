@@ -12,7 +12,9 @@
   flex-direction: column;
   gap: var(--space-md);
   width: min(var(--side-sheet-width), 32vw);
+  height: calc(100vh - (var(--space-md) * 2));
   min-height: 0;
+  box-sizing: border-box;
   padding: 60px 22px 22px;
   border: 1px solid var(--glass-border-strong);
   border-radius: 20px;
@@ -38,6 +40,7 @@
     inset 0 -1px 0 rgba(0, 0, 0, 0.15);
   overflow-x: hidden;
   overflow-y: auto;
+  overscroll-behavior: contain;
   transform: translateX(calc(100% + 28px));
   opacity: 0;
   pointer-events: none;
@@ -59,6 +62,12 @@
   transform: translateX(0);
   opacity: 1;
   pointer-events: auto;
+}
+
+/* The panel itself owns vertical scrolling. Its content must keep its natural
+   height; otherwise flexbox compresses the last card and hides its overflow. */
+.side-sheet > :not(.sheet-close) {
+  flex: 0 0 auto;
 }
 
 /* ---- Empty state ---- */
@@ -243,6 +252,77 @@
 
 .sheet-toolbar .toolbar-btn:active {
   transform: scale(0.95);
+}
+
+/* Enhancement switches are text actions so their purpose stays visible in
+   the detail panel; the active state belongs to the current game only. */
+.sheet-enhancement {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid rgba(200, 215, 235, 0.1);
+  border-radius: 14px;
+  background: rgba(16, 24, 40, 0.16);
+}
+
+.sheet-enhancement-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.sheet-enhancement-head span {
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+  font-weight: 700;
+}
+
+.sheet-enhancement-head small,
+.sheet-enhancement-hint {
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+}
+
+.sheet-enhancement-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.enhancement-quick {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 7px 9px;
+  border: 1px solid rgba(200, 215, 235, 0.14);
+  border-radius: 9px;
+  color: var(--text-secondary);
+  background: rgba(200, 215, 235, 0.05);
+  font-size: var(--text-xs);
+  font-weight: 650;
+  transition: color var(--duration-fast) var(--ease-out), border-color var(--duration-fast) var(--ease-out), background var(--duration-fast) var(--ease-out);
+}
+
+.enhancement-quick:hover:not(:disabled),
+.enhancement-quick:focus-visible {
+  color: var(--text-primary);
+  border-color: var(--accent);
+  background: rgba(200, 215, 235, 0.1);
+  outline: 0;
+}
+
+.enhancement-quick.enabled {
+  color: var(--text-primary);
+  border-color: color-mix(in srgb, var(--accent) 70%, transparent);
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+}
+
+.enhancement-quick:disabled {
+  cursor: wait;
+  opacity: 0.6;
 }
 
 .sheet-toolbar .toolbar-btn.danger {
@@ -481,6 +561,55 @@
 }
 
 /* ---- Sessions list ---- */
+.session-collapsible {
+  margin-bottom: var(--space-md);
+  border: 1px solid rgba(200, 215, 235, 0.1);
+  border-radius: var(--card-radius-md);
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.session-collapsible summary {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: 10px 12px;
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+  font-weight: 700;
+  cursor: pointer;
+  list-style: none;
+}
+
+.session-collapsible summary::-webkit-details-marker {
+  display: none;
+}
+
+.session-collapsible summary span {
+  margin-left: auto;
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  font-weight: 600;
+}
+
+.session-collapsible summary::after {
+  content: "";
+  width: 16px;
+  height: 16px;
+  background: currentColor;
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  mask-size: contain;
+  mask-repeat: no-repeat;
+  transition: transform 160ms ease;
+}
+
+.session-collapsible[open] summary::after {
+  transform: rotate(180deg);
+}
+
+.session-collapsible-body {
+  padding: 0 10px 10px;
+}
+
 .sessions-list {
   display: grid;
   gap: 4px;
@@ -516,9 +645,9 @@
 
 /* ---- Description ---- */
 .sheet-description {
-  max-height: min(24vh, 240px);
+  max-height: none;
   margin: 0;
-  overflow-y: auto;
+  overflow: visible;
   padding-right: var(--space-sm);
   font-size: var(--text-body);
   line-height: 1.8;

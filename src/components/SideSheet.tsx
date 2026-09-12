@@ -9,9 +9,11 @@ import {
   Trash2,
   ShieldCheck,
   Tags,
+  Languages,
+  Sparkles,
   X
 } from "lucide-react";
-import type { Game } from "../types";
+import type { EnhancementToolId, Game } from "../types";
 import {
   completeness,
   formatBgmRating,
@@ -19,6 +21,7 @@ import {
   formatPlayTime,
   getRecentTwoWeeksSeconds,
   getTotalPlaySeconds,
+  metadataSourceLabel,
   metadataChecks,
   statusMeta
 } from "../utils";
@@ -34,10 +37,13 @@ interface SideSheetProps {
   onEdit: (game: Game) => void;
   onDelete: (game: Game) => void;
   onRetryBangumiRating: (game: Game) => void;
+  onOpenBangumi: (game: Game) => void;
   onRetryTranslation: (game: Game) => void;
   isSearchingMetadata: boolean;
   isFindingCovers: boolean;
   metadataKeyword: string;
+  onToggleEnhancement: (game: Game, toolId: EnhancementToolId) => void | Promise<void>;
+  isEnhancementBusy: boolean;
 }
 
 export function SideSheet({
@@ -50,10 +56,13 @@ export function SideSheet({
   onEdit,
   onDelete,
   onRetryBangumiRating,
+  onOpenBangumi,
   onRetryTranslation,
   isSearchingMetadata,
   isFindingCovers,
-  metadataKeyword
+  metadataKeyword,
+  onToggleEnhancement,
+  isEnhancementBusy
 }: SideSheetProps) {
   const [deletePending, setDeletePending] = useState(false);
   const [showOriginalDescription, setShowOriginalDescription] = useState(false);
@@ -78,7 +87,7 @@ export function SideSheet({
   }
 
   return (
-    <aside className={`side-sheet ${isOpen ? "open" : ""}`}>
+    <aside className={`side-sheet ${isOpen ? "open" : ""}`} inert={!isOpen} aria-hidden={!isOpen}>
       {game ? (
         <>
           <button className="sheet-close" onClick={onClose} aria-label="关闭详情">
@@ -97,6 +106,8 @@ export function SideSheet({
             <span className={`status-pill ${statusMeta[game.status].tone}`}>{game.status}</span>
             {game.currentSessionStartedAt && <span className="playing-pill">正在游玩</span>}
             {game.releaseDate && <span className="status-pill">{game.releaseDate}</span>}
+            {game.metadataSource && <span className="status-pill">资料来源：{metadataSourceLabel(game.metadataSource)}</span>}
+            {game.localeEmulator?.enabled && <span className="status-pill">转区启动</span>}
           </div>
 
           {/* ---- Action toolbar ---- */}
@@ -115,7 +126,7 @@ export function SideSheet({
               disabled={isFindingCovers}
               aria-label="找横版图"
             >
-              <ImagePlus size={18} />
+              <ImagePlus size={18} className={isFindingCovers ? "spinning" : ""} />
             </button>
             <button
               className="toolbar-btn"
@@ -131,6 +142,38 @@ export function SideSheet({
             >
               <Trash2 size={18} />
             </button>
+          </div>
+
+          <div className="sheet-enhancement">
+            <div className="sheet-enhancement-head">
+              <span>游戏增强</span>
+              <small>按作品独立设置</small>
+            </div>
+            <div className="sheet-enhancement-actions">
+              <button
+                type="button"
+                className={`enhancement-quick ${game.localeEmulator?.enabled ? "enabled" : ""}`}
+                disabled={isEnhancementBusy}
+                aria-pressed={game.localeEmulator?.enabled === true}
+                onClick={() => void onToggleEnhancement(game, "localeEmulator")}
+              >
+                <Languages size={16} />
+                <span>{game.localeEmulator?.enabled ? "已启用转区" : "一键转区"}</span>
+              </button>
+              <button
+                type="button"
+                className={`enhancement-quick ${game.magpieEnabled ? "enabled" : ""}`}
+                disabled={isEnhancementBusy}
+                aria-pressed={game.magpieEnabled === true}
+                onClick={() => void onToggleEnhancement(game, "magpie")}
+              >
+                <Sparkles size={16} />
+                <span>{game.magpieEnabled ? "已启用超分" : "一键超分"}</span>
+              </button>
+            </div>
+            <small className="sheet-enhancement-hint">
+              {isEnhancementBusy ? "正在检查或部署官方工具…" : "首次使用可选择已有程序或一键安装；仅对当前作品生效"}
+            </small>
           </div>
 
           {/* ---- Delete confirmation ---- */}
@@ -171,11 +214,9 @@ export function SideSheet({
                     <RefreshCw size={13} /> 重新查询
                   </button>
                 )}
-                {game.bgmId && game.bgmId > 0 && (
-                  <button className="text-button" onClick={() => window.open(`https://bgm.tv/subject/${game.bgmId}`, "_blank")} style={{ marginTop: 6 }}>
-                    在 Bangumi 查看
-                  </button>
-                )}
+                <button className="text-button" onClick={() => onOpenBangumi(game)} style={{ marginTop: 6 }}>
+                  在 Bangumi 查看
+                </button>
               </div>
             </div>
           </div>
@@ -207,32 +248,39 @@ export function SideSheet({
                 更多信息
               </summary>
               <div className="collapsible-body">
-                {game.sessions && game.sessions.length > 0 && (
-                  <>
-                    <div className="section-heading">
-                      <Clock3 size={16} />
-                      游玩记录
-                    </div>
-                    <div className="sessions-list">
-                      {game.sessions.slice().reverse().slice(0, 5).map((session, i) => (
-                        <div key={session.sessionId || i} className="session-item">
-                          <span className="session-date">{formatDate(session.startedAt)}</span>
-                          <span className="session-duration">{formatPlayTime(session.durationSeconds)}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </>
-                )}
-
-                {!game.sessions || game.sessions.length === 0 ? (
-                  <p className="sheet-hint">还没有游玩记录</p>
-                ) : null}
+                <details className="session-collapsible" open>
+                  <summary>
+                    <Clock3 size={16} />
+                    游玩记录
+                    {game.sessions && game.sessions.length > 0 ? <span>{game.sessions.length} 次</span> : null}
+                  </summary>
+                  <div className="session-collapsible-body">
+                    {game.sessions && game.sessions.length > 0 ? (
+                      <div className="sessions-list">
+                        {game.sessions.slice().reverse().slice(0, 5).map((session, i) => (
+                          <div key={session.sessionId || i} className="session-item">
+                            <span className="session-date">{formatDate(session.startedAt)}</span>
+                            <span className="session-duration">{formatPlayTime(session.durationSeconds)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="sheet-hint">还没有游玩记录</p>
+                    )}
+                  </div>
+                </details>
 
                 {game.description ? (
                   <>
                     {game.translationStatus === "failed" && (
                       <>
                         <p className="sheet-hint" style={{ marginTop: 12 }}>翻译暂不可用，当前显示原文</p>
+                        <button className="text-button" onClick={() => onRetryTranslation(game)} style={{ marginTop: 6 }}>重新翻译</button>
+                      </>
+                    )}
+                    {game.translationStatus === "partial" && (
+                      <>
+                        <p className="sheet-hint" style={{ marginTop: 12 }}>翻译未完全完成，未成功部分保留原文</p>
                         <button className="text-button" onClick={() => onRetryTranslation(game)} style={{ marginTop: 6 }}>重新翻译</button>
                       </>
                     )}

@@ -1,7 +1,20 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
+const http = require("node:http");
 
 const { createNetworkClient } = require("./client.cjs");
+
+async function withServer(handler, run) {
+  const server = http.createServer(handler);
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+  try {
+    const { port } = server.address();
+    await run(`http://127.0.0.1:${port}`);
+  } finally {
+    server.closeAllConnections?.();
+    await new Promise((resolve) => server.close(resolve));
+  }
+}
 
 test("network client forwards request options and returns the response", async () => {
   const calls = [];
@@ -73,4 +86,31 @@ test("requestJson distinguishes rate limits and malformed JSON", async () => {
     await client.requestJson("https://example.test/bad-json"),
     { status: "parse_error", httpStatus: 200 }
   );
+});
+
+test("requestJson bounds the complete response, not only time to headers", { timeout: 250 }, async () => {
+  await withServer((request, response) => {
+    if (request.url === "/hanging-body") {
+      response.writeHead(200, { "content-type": "application/json" });
+      response.write('{"partial":');
+      return;
+    }
+    response.writeHead(200, { "content-type": "application/json" });
+    response.end('{"complete":true}');
+  }, async (baseUrl) => {
+    const client = createNetworkClient({ fetchImpl: globalThis.fetch, defaultTimeoutMs: 40 });
+
+    await assert.doesNotReject(async () => {
+      assert.deepEqual(await client.requestJson(`${baseUrl}/hanging-body`), {
+        status: "network_error",
+        errorName: "TimeoutError",
+        errorMessage: "Request timed out after 40ms"
+      });
+    });
+    assert.deepEqual(await client.requestJson(`${baseUrl}/complete-body`), {
+      status: "success",
+      httpStatus: 200,
+      data: { complete: true }
+    });
+  });
 });

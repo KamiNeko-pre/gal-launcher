@@ -32,6 +32,13 @@ export function normalizeTags(raw: string) {
     .filter(Boolean);
 }
 
+export function metadataSourceLabel(source?: string) {
+  if (source === "galgamewiki") return "GalgameWiki";
+  if (source === "vndb") return "VNDB";
+  if (source === "bangumi") return "Bangumi";
+  return source || "本地资料";
+}
+
 export function formatBgmRating(game: Game) {
   if (game.bgmRatingStatus === "network_error" || game.bgmRatingStatus === "rate_limited" || game.bgmRatingStatus === "parse_error") return "暂时无法连接";
   if (game.bgmRatingStatus === "no_match") return "未找到可靠匹配";

@@ -1,4 +1,5 @@
 import { formatPlayTime } from "../utils";
+import { CollectionScopeSelect } from "../components/CollectionScopeSelect";
 import type { LibraryController } from "../useLibrary";
 
 export function MonoLuxLayout({ lib }: { lib: LibraryController }) {
@@ -13,6 +14,7 @@ export function MonoLuxLayout({ lib }: { lib: LibraryController }) {
     selectedImage,
     filteredGames,
     collectionGames,
+    openCollectionGame,
     setSelectedId,
     addGame,
     launch,
@@ -35,8 +37,8 @@ export function MonoLuxLayout({ lib }: { lib: LibraryController }) {
     const base = idx < 0 ? 0 : idx;
     const target = list[(base + dir + list.length) % list.length];
     if (target) {
-      setSelectedId(target.id);
-      if (viewMode === "collection") setViewMode("library");
+      if (viewMode === "collection") openCollectionGame(target.id);
+      else setSelectedId(target.id);
     }
   }
 
@@ -54,11 +56,11 @@ export function MonoLuxLayout({ lib }: { lib: LibraryController }) {
           <em>LUMEN SHELF</em>
         </div>
         <nav className="guide">
-          <button className={`gtab ${allOn ? "on" : ""}`} title="全部作品" onClick={() => { setViewMode("library"); setStatusFilter("全部"); }}>全库</button>
+          <button className={`gtab ${allOn ? "on" : ""}`} title="主页" onClick={() => { setViewMode("library"); setStatusFilter("全部"); }}>主页</button>
           <button className={`gtab ${favOn ? "on" : ""}`} title="收藏书架" onClick={() => { setViewMode("collection"); setStatusFilter("全部"); }}>书架</button>
-          <button className={`gtab ${nowOn ? "on" : ""}`} title="进行中" onClick={() => { setViewMode("library"); setStatusFilter("进行中"); }}>续读</button>
+          <button className={`gtab ${lib.isCategoriesOpen ? "on" : ""}`} title="分类" onClick={() => lib.setIsCategoriesOpen(true)}>分类</button>
         </nav>
-        <label className="seek"><i>SEARCH</i><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="title / studio / tag" /><span className="kbd">/</span></label>
+        <div className="seek"><CollectionScopeSelect lib={lib} /><input aria-label="搜索游戏" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="title / studio / tag" /><span className="kbd">/</span></div>
         <div className="curator">
           <button className="cbtn" title="导出备份" onClick={exportBackup}><i>↓</i><em>导出</em></button>
           <button className="cbtn" title="恢复备份" onClick={importBackup}><i>↑</i><em>恢复</em></button>
@@ -68,7 +70,7 @@ export function MonoLuxLayout({ lib }: { lib: LibraryController }) {
       </header>
 
       {viewMode === "collection" ? (
-        <main className="gallery catalog-gallery">
+        <main className="gallery catalog-gallery" data-game-grid>
           <div className="cat-head"><h2>书架目录</h2><span>{collectionGames.length} titles</span></div>
           {collectionGames.length > 0 ? (
             <div className="cat-grid">
@@ -78,7 +80,8 @@ export function MonoLuxLayout({ lib }: { lib: LibraryController }) {
                   <button
                     key={game.id}
                     className={`cat-card ${game.id === selected?.id ? "on" : ""}`}
-                    onClick={() => { setSelectedId(game.id); setViewMode("library"); }}
+                    data-game-id={game.id}
+                    onClick={() => openCollectionGame(game.id)}
                     onContextMenu={(e) => openContextMenu(e, game)}
                   >
                     <div className="cat-art" style={cv ? { backgroundImage: `url("${cv}")` } : undefined}>
@@ -172,7 +175,8 @@ export function MonoLuxLayout({ lib }: { lib: LibraryController }) {
               <button
                 key={game.id}
                 className={`plate ${game.id === selected?.id ? "on" : ""}`}
-                onClick={() => { setSelectedId(game.id); if (viewMode === "collection") setViewMode("library"); }}
+                data-game-id={game.id}
+                onClick={() => { if (viewMode === "collection") openCollectionGame(game.id); else setSelectedId(game.id); }}
                 onContextMenu={(e) => openContextMenu(e, game)}
               >
                 <div className="pcv" style={cv ? { backgroundImage: `url("${cv}")` } : undefined} />
